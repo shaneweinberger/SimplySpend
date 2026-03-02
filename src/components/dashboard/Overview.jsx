@@ -157,11 +157,11 @@ export default function Overview() {
 
             const { data, error } = await supabase
                 .from('user_categories')
-                .select('name')
+                .select('name, color')
                 .eq('user_id', user.id);
 
             if (error) throw error;
-            setCategories(data?.map(c => c.name) || []);
+            setCategories(data || []);
         } catch (err) {
             console.error('Error fetching categories:', err);
         }
@@ -205,11 +205,14 @@ export default function Overview() {
     }, [transactions, effectiveDateRange]);
 
     // Auto-select category if none
+    // Derived category names list for backward compat
+    const categoryNames = categories.map(c => c.name);
+
     useEffect(() => {
-        if (categories.length > 0 && !selectedCategory) {
-            setSelectedCategory(categories[0]);
+        if (categoryNames.length > 0 && !selectedCategory) {
+            setSelectedCategory(categoryNames[0]);
         }
-    }, [categories, selectedCategory]);
+    }, [categoryNames, selectedCategory]);
 
     // Bucket data
     const chartData = useMemo(() => {
@@ -355,7 +358,9 @@ export default function Overview() {
 
     const getColorForCategory = (catName, fallbackIndex = 0) => {
         if (catName === 'remaining') return '#cbd5e1'; // slate-300
-        const idx = categories.indexOf(catName);
+        const cat = categories.find(c => c.name === catName);
+        if (cat?.color) return cat.color;
+        const idx = categoryNames.indexOf(catName);
         return COLORS[idx !== -1 ? idx % COLORS.length : fallbackIndex % COLORS.length];
     };
 
@@ -607,7 +612,7 @@ export default function Overview() {
                             onChange={e => setSelectedCategory(e.target.value)}
                             className="bg-indigo-50/50 border border-indigo-200 text-indigo-700 font-bold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block min-w-[160px] p-2 outline-none cursor-pointer animate-in fade-in slide-in-from-right-4 duration-300"
                         >
-                            {categories.map(cat => (
+                            {categoryNames.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
                             <option value="Uncategorized">Uncategorized</option>
@@ -796,9 +801,7 @@ export default function Overview() {
             <div className="bg-indigo-50/30 border border-indigo-100/50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
                 <Info className="text-indigo-400 shrink-0" size={18} />
                 <p className="text-indigo-900/60 text-xs font-medium">
-                    Pro Tip: Update <button onClick={() => navigate('/dashboard/categories')} className="font-bold underline hover:text-indigo-700">Categories</button>
-                    and <button onClick={() => navigate('/dashboard/rules')} className="font-bold underline hover:text-indigo-700">Rules</button>
-                    to customize how your transactions are sorted.
+                    Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-indigo-700">Categories & Rules</button> to customize how your transactions are sorted.
                 </p>
             </div>
 

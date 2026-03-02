@@ -92,6 +92,7 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
         { path: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={20} />, end: true },
         { path: '/dashboard/analysis', label: 'Analysis', icon: <PieChart size={20} /> },
         { path: '/dashboard/processing', label: 'Processing', icon: <Database size={20} /> },
+        { path: '/dashboard/ai-processing', label: 'AI Processing', icon: <Zap size={20} /> },
     ];
 
     return (

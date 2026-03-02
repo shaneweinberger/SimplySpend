@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import TransactionUploads from './TransactionUploads';
-import Categories from './Categories';
-import Rules from './Rules';
 import { FileText, Trash2 } from 'lucide-react';
 
 export default function Processing() {
@@ -47,7 +45,7 @@ export default function Processing() {
             {/* ── Page Header ──────────────────────────────────────────── */}
             <div className="mb-10">
                 <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Data Processing</h1>
-                <p className="text-sm text-slate-400 mt-0.5">Manage imports, categories, and automation rules.</p>
+                <p className="text-sm text-slate-400 mt-0.5">Manage file imports and uploaded data.</p>
             </div>
 
             {/* ── Upload ───────────────────────────────────────────────── */}
@@ -92,10 +90,10 @@ export default function Processing() {
                                         </td>
                                         <td className="px-5 py-3">
                                             <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${file.status === 'processed' ? 'text-emerald-600' :
-                                                    file.status === 'error' ? 'text-rose-500' : 'text-amber-500'
+                                                file.status === 'error' ? 'text-rose-500' : 'text-amber-500'
                                                 }`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${file.status === 'processed' ? 'bg-emerald-500' :
-                                                        file.status === 'error' ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'
+                                                    file.status === 'error' ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'
                                                     }`} />
                                                 {file.status.charAt(0).toUpperCase() + file.status.slice(1)}
                                             </span>
@@ -116,31 +114,7 @@ export default function Processing() {
                 )}
             </div>
 
-            {/* ── Divider ──────────────────────────────────────────────── */}
-            <div className="border-t border-slate-100 mb-10" />
-
-            {/* ── Configuration ────────────────────────────────────────── */}
-            <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-6">Configuration</p>
-                <div className="grid grid-cols-12 gap-8 items-start">
-
-                    {/* Categories */}
-                    <div className="col-span-4">
-                        <p className="text-sm font-semibold text-slate-700 mb-1">Categories</p>
-                        <p className="text-xs text-slate-400 mb-4">Define taxonomy for AI categorization</p>
-                        <Categories isNested={true} />
-                    </div>
-
-                    {/* Rules */}
-                    <div className="col-span-8">
-                        <p className="text-sm font-semibold text-slate-700 mb-1">Rules</p>
-                        <p className="text-xs text-slate-400 mb-4">Automate categorization for recurring patterns</p>
-                        <Rules isNested={true} />
-                    </div>
-
-                </div>
-            </div>
-
         </div>
     );
 }
+

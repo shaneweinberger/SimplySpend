@@ -211,14 +211,24 @@ export default function Analysis() {
 
             const { data, error } = await supabase
                 .from('user_categories')
-                .select('name')
+                .select('name, color')
                 .eq('user_id', user.id);
 
             if (error) throw error;
-            setCategories(data?.map(c => c.name) || []);
+            setCategories(data || []);
         } catch (err) {
             console.error('Error fetching categories:', err);
         }
+    };
+
+    // Derived category names for backward compat
+    const categoryNames = categories.map(c => c.name);
+
+    // Color helper: persisted color > fallback palette
+    const getColor = (catName, fallbackIndex = 0) => {
+        const cat = categories.find(c => c.name === catName);
+        if (cat?.color) return cat.color;
+        return COLORS[fallbackIndex % COLORS.length];
     };
 
     const addFilter = (field) => {
@@ -380,7 +390,7 @@ export default function Analysis() {
         if (statsIndex === -1) return null;
         return {
             ...categoryStats.data[statsIndex],
-            color: COLORS[statsIndex % COLORS.length]
+            color: getColor(selectedCategory, statsIndex)
         };
     }, [selectedCategory, categoryStats.data]);
 
@@ -651,7 +661,7 @@ export default function Analysis() {
                                                     >
                                                         <td className="px-5 py-3 text-sm font-semibold text-slate-700">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: isDimmed ? '#cbd5e1' : COLORS[idx % COLORS.length] }} />
+                                                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: isDimmed ? '#cbd5e1' : getColor(row.category, idx) }} />
                                                                 <span className="truncate">{row.category}</span>
                                                             </div>
                                                         </td>
@@ -661,7 +671,7 @@ export default function Analysis() {
                                                             <div className="flex items-center justify-end gap-3">
                                                                 <span className="w-12 text-right text-xs shrink-0">{row.percent.toFixed(1)}%</span>
                                                                 <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
-                                                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${row.percent}%`, backgroundColor: isDimmed ? '#cbd5e1' : COLORS[idx % COLORS.length] }} />
+                                                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${row.percent}%`, backgroundColor: isDimmed ? '#cbd5e1' : getColor(row.category, idx) }} />
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -727,7 +737,7 @@ export default function Analysis() {
                                                     return (
                                                         <Cell
                                                             key={`cell-${index}`}
-                                                            fill={isDimmed ? '#cbd5e1' : COLORS[index % COLORS.length]}
+                                                            fill={isDimmed ? '#cbd5e1' : getColor(entry.category, index)}
                                                             style={{ opacity: isDimmed ? 0.3 : 1, transition: 'all 0.3s' }}
                                                         />
                                                     );
@@ -916,7 +926,7 @@ export default function Analysis() {
                                                         className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl border border-slate-200 shadow-xl z-[60] py-2 animate-in zoom-in-95 duration-200 max-h-64 overflow-y-auto"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        {(filter.field === 'transaction_method' ? ['credit', 'debit'] : ['Uncategorized', ...categories]).map(opt => {
+                                                        {(filter.field === 'transaction_method' ? ['credit', 'debit'] : ['Uncategorized', ...categoryNames]).map(opt => {
                                                             const isSelected = filter.value.includes(opt);
                                                             return (
                                                                 <label
@@ -995,7 +1005,7 @@ export default function Analysis() {
                                     (currentPage - 1) * (itemsPerPage === 'all' ? 0 : itemsPerPage),
                                     itemsPerPage === 'all' ? undefined : currentPage * itemsPerPage
                                 )}
-                                categories={categories}
+                                categories={categoryNames}
                                 isEditingMode={isEditingMode}
                                 editDrafts={editDrafts}
                                 onDraftChange={onDraftChange}

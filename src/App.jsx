@@ -7,6 +7,7 @@ import DashboardLayout from './components/DashboardLayout';
 import Overview from './components/dashboard/Overview';
 import Analysis from './components/dashboard/Analysis';
 import Processing from './components/dashboard/Processing';
+import AIProcessing from './components/dashboard/AIProcessing';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route index element={<Overview />} />
           <Route path="analysis" element={<Analysis />} />
           <Route path="processing" element={<Processing />} />
+          <Route path="ai-processing" element={<AIProcessing />} />
         </Route>
       </Routes>
     </Router>
