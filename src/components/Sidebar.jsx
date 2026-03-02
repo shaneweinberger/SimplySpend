@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { theme } from '../theme';
 import peanutLove from '../assets/peanut_love.jpg';
@@ -91,9 +91,7 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
     const navItems = [
         { path: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={20} />, end: true },
         { path: '/dashboard/analysis', label: 'Analysis', icon: <PieChart size={20} /> },
-        { path: '/dashboard/uploads', label: 'Transaction Uploads', icon: <Upload size={20} /> },
-        { path: '/dashboard/categories', label: 'Categories', icon: <Tags size={20} /> },
-        { path: '/dashboard/rules', label: 'Rules', icon: <Zap size={20} /> },
+        { path: '/dashboard/processing', label: 'Processing', icon: <Database size={20} /> },
     ];
 
     return (

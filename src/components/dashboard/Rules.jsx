@@ -15,7 +15,7 @@ import {
     Pencil
 } from 'lucide-react';
 
-export default function Rules() {
+export default function Rules({ isNested = false }) {
     const [rules, setRules] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -245,36 +245,58 @@ export default function Rules() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-                        <Zap className="text-amber-500 fill-amber-500" size={32} />
-                        Automation Rules
-                    </h1>
-                    <p className="text-slate-500 mt-1">Teach AI how to handle specific merchants and categories.</p>
+        <div className={isNested ? "flex flex-col h-full animate-in fade-in duration-500" : "max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500"}>
+            {isNested ? (
+                /* Compact inline toolbar for nested mode */
+                <div className="flex items-center justify-between gap-2 mb-4">
+                    <p className="text-xs text-slate-400">Teach AI how to handle recurring patterns.</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            disabled={isProcessing}
+                            onClick={() => setIsConfirming(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-all disabled:opacity-40"
+                        >
+                            <Settings2 size={13} />
+                            Reprocess
+                        </button>
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showForm ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                }`}
+                        >
+                            {showForm ? <X size={13} /> : <Plus size={13} />}
+                            {showForm ? 'Cancel' : 'New Rule'}
+                        </button>
+                    </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    <button
-                        disabled={isProcessing}
-                        onClick={() => setIsConfirming(true)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed`}
-                    >
-                        <Settings2 size={20} />
-                        Reprocess All Transactions
-                    </button>
-
-                    <button
-                        onClick={() => setShowForm(!showForm)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${showForm ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'
-                            }`}
-                    >
-                        {showForm ? <X size={20} /> : <Plus size={20} />}
-                        {showForm ? 'Cancel' : 'Create New Rule'}
-                    </button>
-                </div>
-            </header>
+            ) : (
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+                            <Zap className="text-amber-500 fill-amber-500" size={32} />
+                            Automation Rules
+                        </h1>
+                        <p className="text-slate-500 mt-1">Teach AI how to handle specific transactions and categories.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            disabled={isProcessing}
+                            onClick={() => setIsConfirming(true)}
+                            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        >
+                            <Settings2 size={20} />
+                            Reprocess All Transactions
+                        </button>
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${showForm ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
+                        >
+                            {showForm ? <X size={20} /> : <Plus size={20} />}
+                            {showForm ? 'Cancel' : 'Create New Rule'}
+                        </button>
+                    </div>
+                </header>
+            )}
 
             {error && (
                 <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-center gap-3">
@@ -423,7 +445,7 @@ export default function Rules() {
                 </div>
             )}
 
-            <div className="grid gap-4">
+            <div className={`grid gap-3 ${isNested ? '' : ''}`}>
                 {rules.length === 0 ? (
                     <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
                         <Zap size={48} className="mx-auto text-slate-200 mb-4" />
@@ -438,7 +460,8 @@ export default function Rules() {
                     </div>
                 ) : (
                     rules.map((rule) => (
-                        <div key={rule.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group">
+                        <div key={rule.id} className={`bg-white border border-slate-150 rounded-xl shadow-sm hover:shadow-md transition-all group ${isNested ? 'p-4' : 'p-6 rounded-2xl'
+                            }`}>
                             <div className="flex items-start justify-between">
                                 <div className="space-y-4 flex-1">
                                     <div className="flex items-center gap-3">
@@ -509,18 +532,20 @@ export default function Rules() {
                 )}
             </div>
 
-            <div className="flex items-start gap-4 p-6 bg-amber-50 border border-amber-100 rounded-2xl">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                    <Info size={20} className="text-amber-600" />
+            {!isNested && (
+                <div className="flex items-start gap-4 p-6 bg-amber-50 border border-amber-100 rounded-2xl">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                        <Info size={20} className="text-amber-600" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-amber-900 mb-1">How rules affect processing</h4>
+                        <p className="text-amber-800/80 text-sm leading-relaxed">
+                            Rules are sent to Gemini along with your custom categories. The AI uses these rules as strict instructions to ensure
+                            consistent categorization and description cleanup. <strong>Natural Language (AI) Rules</strong> are passed as direct processing instructions, while structured rules are evaluated as deterministic logic.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h4 className="font-bold text-amber-900 mb-1">How rules affect processing</h4>
-                    <p className="text-amber-800/80 text-sm leading-relaxed">
-                        Rules are sent to Gemini along with your custom categories. The AI uses these rules as strict instructions to ensure
-                        consistent categorization and description cleanup. <strong>Natural Language (AI) Rules</strong> are passed as direct processing instructions, while structured rules are evaluated as deterministic logic.
-                    </p>
-                </div>
-            </div>
+            )}
             {/* Confirmation Modal */}
             {isConfirming && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">

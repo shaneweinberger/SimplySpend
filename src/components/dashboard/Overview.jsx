@@ -11,7 +11,8 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Activity,
-    AlertTriangle
+    AlertTriangle,
+    X
 } from 'lucide-react';
 import {
     BarChart,
@@ -42,7 +43,7 @@ const InsightCard = ({ title, primaryMsg, subMsg, icon, colorClass, bgClass }) =
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         const hoveredItem = payload[0];
-        const categoryName = hoveredItem.dataKey || hoveredItem.name;
+        const categoryName = hoveredItem.name || hoveredItem.dataKey;
         const categoryAmount = hoveredItem.value || 0;
         const total = hoveredItem.payload.total || 0;
         const percent = total > 0 ? ((categoryAmount / total) * 100).toFixed(1) : 0;
@@ -75,6 +76,8 @@ const COLORS = [
     '#ec4899', '#06b6d4', '#14b8a6', '#f97316', '#3b82f6',
     '#84cc16', '#d946ef', '#f43f5e', '#0ea5e9', '#eab308'
 ];
+
+const DEFAULT_VISIBLE_CATEGORIES = 5;
 
 export default function Overview() {
     const navigate = useNavigate();
@@ -288,18 +291,73 @@ export default function Overview() {
         return sortedData;
     }, [filteredTransactions, groupBy]);
 
-    // Collect all active categories for stacked bar (exclude empty ones)
-    const activeCategories = useMemo(() => {
-        const cats = new Set();
+    // Category aggregation and visibility logic
+    const categoryTotals = useMemo(() => {
+        const totals = {};
         chartData.forEach(bucket => {
             Object.keys(bucket).forEach(k => {
                 if (!['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(k)) {
-                    cats.add(k);
+                    totals[k] = (totals[k] || 0) + bucket[k];
                 }
             });
         });
-        return Array.from(cats);
+        return Object.entries(totals).sort((a, b) => b[1] - a[1]);
     }, [chartData]);
+
+    const defaultCategories = useMemo(() => {
+        return categoryTotals.slice(0, DEFAULT_VISIBLE_CATEGORIES).map(c => c[0]);
+    }, [categoryTotals]);
+
+    const [userSelectedCategories, setUserSelectedCategories] = useState(null);
+
+    // Reset explicit selection when date range changes
+    useEffect(() => {
+        setUserSelectedCategories(null);
+    }, [effectiveDateRange]);
+
+    const activeVisibleCategories = useMemo(() => {
+        if (userSelectedCategories !== null) return userSelectedCategories;
+        return defaultCategories;
+    }, [userSelectedCategories, defaultCategories]);
+
+    const remainingCount = categoryTotals.length - activeVisibleCategories.length;
+
+    const presentationChartData = useMemo(() => {
+        const activeVisibleSet = new Set(activeVisibleCategories);
+        return chartData.map(bucket => {
+            const newBucket = { ...bucket };
+            let remainingSum = 0;
+            Object.keys(bucket).forEach(k => {
+                if (!['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(k)) {
+                    if (!activeVisibleSet.has(k)) {
+                        remainingSum += bucket[k] || 0;
+                        delete newBucket[k];
+                    }
+                }
+            });
+            if (categoryTotals.length > activeVisibleCategories.length) {
+                newBucket['remaining'] = remainingSum;
+            }
+            return newBucket;
+        });
+    }, [chartData, activeVisibleCategories, categoryTotals.length]);
+
+    const toggleCategoryVisibility = (catName) => {
+        const current = userSelectedCategories !== null ? userSelectedCategories : defaultCategories;
+        if (current.includes(catName)) {
+            // Remove
+            setUserSelectedCategories(current.filter(c => c !== catName));
+        } else {
+            // Add
+            setUserSelectedCategories([...current, catName]);
+        }
+    };
+
+    const getColorForCategory = (catName, fallbackIndex = 0) => {
+        if (catName === 'remaining') return '#cbd5e1'; // slate-300
+        const idx = categories.indexOf(catName);
+        return COLORS[idx !== -1 ? idx % COLORS.length : fallbackIndex % COLORS.length];
+    };
 
     // Calculate dynamic insights based on intervals
     const dynamicInsights = useMemo(() => {
@@ -614,11 +672,46 @@ export default function Overview() {
             <div className="grid grid-cols-1 gap-8">
                 {/* Main Trend Chart */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[450px]">
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900">Spending Trends</h3>
                             <p className="text-sm text-slate-500">Click on any {groupBy.toLowerCase()} interval to see a detailed breakdown.</p>
                         </div>
+
+                        {!focusCategory && (
+                            <div className="flex flex-wrap items-center gap-2 max-w-full">
+                                {activeVisibleCategories.map((cat, idx) => (
+                                    <div key={cat} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 shadow-sm text-xs font-bold text-slate-700">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getColorForCategory(cat, idx) }} />
+                                        {cat}
+                                        <button onClick={() => toggleCategoryVisibility(cat)} className="ml-0.5 text-slate-400 hover:text-slate-700 transition-colors">
+                                            <X size={12} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {remainingCount > 0 && (
+                                    <div className="relative flex items-center group">
+                                        <div className="absolute left-3 w-2.5 h-2.5 rounded-full bg-slate-300 z-10 pointer-events-none" />
+                                        <select
+                                            className="appearance-none bg-white border border-dashed border-slate-300 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 hover:bg-white font-bold text-xs rounded-full pl-7 pr-7 py-1.5 outline-none cursor-pointer transition-all shadow-sm"
+                                            value=""
+                                            onChange={(e) => {
+                                                if (e.target.value) toggleCategoryVisibility(e.target.value);
+                                            }}
+                                        >
+                                            <option value="" disabled>Remaining ({remainingCount})</option>
+                                            {categoryTotals.filter(c => !activeVisibleCategories.includes(c[0])).map(c => (
+                                                <option key={c[0]} value={c[0]}>+ Add {c[0]}</option>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 group-hover:text-indigo-500">
+                                            <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1 w-full min-h-[350px]">
@@ -646,27 +739,36 @@ export default function Overview() {
                                         </Bar>
                                     </BarChart>
                                 ) : (
-                                    <BarChart data={chartData} onClick={handleChartClick} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <BarChart data={presentationChartData} onClick={handleChartClick} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={(val) => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
                                         <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 6 }} content={<CustomTooltip />} />
-                                        <Legend
-                                            wrapperStyle={{ paddingTop: '20px' }}
-                                            iconType="circle"
-                                            formatter={(value) => <span className="text-slate-600 font-medium text-xs ml-1">{value}</span>}
-                                        />
-                                        {activeCategories.map((cat, index) => (
+                                        {activeVisibleCategories.map((cat, index) => {
+                                            const isTop = remainingCount === 0 && index === activeVisibleCategories.length - 1;
+                                            return (
+                                                <Bar
+                                                    key={cat}
+                                                    dataKey={cat}
+                                                    stackId="a"
+                                                    fill={getColorForCategory(cat, index)}
+                                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                    radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                                                    onClick={(data, idx, e) => handleStackedBarClick(cat, data, e)}
+                                                />
+                                            );
+                                        })}
+                                        {remainingCount > 0 && (
                                             <Bar
-                                                key={cat}
-                                                dataKey={cat}
+                                                dataKey="remaining"
+                                                name={`Remaining ${remainingCount} categor${remainingCount === 1 ? 'y' : 'ies'}`}
                                                 stackId="a"
-                                                fill={COLORS[categories.indexOf(cat) !== -1 ? categories.indexOf(cat) % COLORS.length : index % COLORS.length]}
+                                                fill="#cbd5e1"
                                                 className="cursor-pointer hover:opacity-80 transition-opacity"
-                                                radius={index === activeCategories.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                                                onClick={(data, idx, e) => handleStackedBarClick(cat, data, e)}
+                                                radius={[4, 4, 0, 0]}
+                                                onClick={(data, idx, e) => handleStackedBarClick('Remaining', data, e)}
                                             />
-                                        ))}
+                                        )}
                                         {/* Invisible Line tracking the total sum to perfectly anchor and horizontally center the total labels */}
                                         <Line dataKey="total" stroke="transparent" dot={false} activeDot={false} isAnimationActive={false}>
                                             <LabelList
@@ -722,22 +824,24 @@ export default function Overview() {
                             View All Categories
                         </button>
                     ) : (
-                        <button
-                            className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2.5"
-                            onClick={() => {
-                                setFocusCategory(true);
-                                setSelectedCategory(chartPopover.category);
-                                setChartPopover(null);
-                            }}
-                        >
-                            <Tag size={16} className={chartPopover.category ? "text-indigo-500" : "text-slate-400"} />
-                            Focus on {chartPopover.category}
-                        </button>
+                        chartPopover.category !== 'Remaining' && (
+                            <button
+                                className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2.5"
+                                onClick={() => {
+                                    setFocusCategory(true);
+                                    setSelectedCategory(chartPopover.category);
+                                    setChartPopover(null);
+                                }}
+                            >
+                                <Tag size={16} className={chartPopover.category ? "text-indigo-500" : "text-slate-400"} />
+                                Focus on {chartPopover.category}
+                            </button>
+                        )
                     )}
                     <button
                         className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2.5"
                         onClick={() => {
-                            navigateToAnalysis(chartPopover.payload, chartPopover.category);
+                            navigateToAnalysis(chartPopover.payload, chartPopover.category === 'Remaining' ? null : chartPopover.category);
                             setChartPopover(null);
                         }}
                     >
