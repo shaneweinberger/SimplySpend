@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { CATEGORY_COLORS } from '../../lib/categoryColors';
 import {
     TrendingUp,
-    DollarSign,
     LayoutDashboard,
-    ArrowRight,
     Info,
     Tag,
     ArrowUpRight,
     ArrowDownRight,
     Activity,
-    AlertTriangle,
-    X
+    X,
 } from 'lucide-react';
 import {
     BarChart,
@@ -22,11 +20,11 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip as RechartsTooltip,
-    Legend,
     ResponsiveContainer,
-    LabelList
+    LabelList,
 } from 'recharts';
 
+// ─── Insight card ──────────────────────────────────────────────────────────────
 const InsightCard = ({ title, primaryMsg, subMsg, icon, colorClass, bgClass }) => (
     <div className={`p-4 rounded-xl border border-slate-200/60 shadow-sm flex flex-col justify-center gap-1.5 ${bgClass || 'bg-white'}`}>
         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -40,42 +38,29 @@ const InsightCard = ({ title, primaryMsg, subMsg, icon, colorClass, bgClass }) =
     </div>
 );
 
-const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-        const hoveredItem = payload[0];
-        const categoryName = hoveredItem.name || hoveredItem.dataKey;
-        const categoryAmount = hoveredItem.value || 0;
-        const total = hoveredItem.payload.total || 0;
-        const percent = total > 0 ? ((categoryAmount / total) * 100).toFixed(1) : 0;
-
+// ─── Lightweight hover tooltip (suppressed when locked) ───────────────────────
+function makeHoverTooltip(lockedRef) {
+    return function HoverTooltip({ active, payload, label }) {
+        if (lockedRef.current) return null;        // suppress while locked
+        if (!active || !payload?.length) return null;
+        const item = payload[0];
+        const catName = item.name || item.dataKey;
+        const amount = item.value || 0;
+        const total = item.payload?.total || 0;
+        const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : '0.0';
         return (
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-md min-w-[160px]">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-1">{label} · {categoryName}</p>
-                <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center gap-4">
-                        <span className="text-xs text-slate-500 font-medium">{categoryName} Spend:</span>
-                        <span className="text-sm font-bold text-slate-800">${categoryAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-4">
-                        <span className="text-xs text-slate-500 font-medium">% of Total:</span>
-                        <span className="text-xs font-bold text-indigo-600">{percent}%</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-4 pt-1 border-t border-slate-100 mt-1">
-                        <span className="text-xs text-slate-500 font-medium">Interval Total:</span>
-                        <span className="text-xs font-bold text-slate-700">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
+            <div className="bg-white/95 backdrop-blur-sm px-3 py-2.5 rounded-xl border border-slate-200 shadow-lg pointer-events-none min-w-[160px]">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{label}</p>
+                <p className="text-sm font-bold text-slate-800">{catName}</p>
+                <div className="flex items-center justify-between gap-4 mt-1">
+                    <span className="text-xs text-slate-500">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-xs font-semibold text-indigo-600">{pct}%</span>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1.5">Click to see actions</p>
             </div>
         );
-    }
-    return null;
-};
-
-const COLORS = [
-    '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#ec4899', '#06b6d4', '#14b8a6', '#f97316', '#3b82f6',
-    '#84cc16', '#d946ef', '#f43f5e', '#0ea5e9', '#eab308'
-];
+    };
+}
 
 const DEFAULT_VISIBLE_CATEGORIES = 5;
 
@@ -87,31 +72,48 @@ export default function Overview() {
     const [loading, setLoading] = useState(true);
 
     // Top-Level Controls
-    const [timeRange, setTimeRange] = useState('30D'); // 30D, 3M, 6M, YTD, 1Y, Custom
+    const [timeRange, setTimeRange] = useState('30D');
     const [customStartDate, setCustomStartDate] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
     });
-    const [customEndDate, setCustomEndDate] = useState(() => {
-        return new Date().toISOString().split('T')[0];
-    });
-    const [groupBy, setGroupBy] = useState('Weekly'); // Daily, Weekly, Monthly
+    const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [groupBy, setGroupBy] = useState('Weekly');
     const [focusCategory, setFocusCategory] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('');
-    const [chartPopover, setChartPopover] = useState(null);
 
+    // ── Locked tooltip (replaces chartPopover) ─────────────────────────────────
+    const [lockedTooltip, setLockedTooltip] = useState(null); // { category, payload, x, y }
+    const lockedTooltipRef = useRef(null);
+    lockedTooltipRef.current = lockedTooltip;
+    const chartContainerRef = useRef(null);
+
+    // Memoised hover tooltip component that captures lockedTooltipRef
+    const HoverTooltip = useMemo(() => makeHoverTooltip(lockedTooltipRef), []);
+
+    // ── Pill drag state ────────────────────────────────────────────────────────
+    const [dragIndex, setDragIndex] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
+
+    // ── Effects ────────────────────────────────────────────────────────────────
+    useEffect(() => { fetchData(); }, []);
+
+    // Close locked tooltip on outside click
     useEffect(() => {
-        fetchData();
+        const close = () => setLockedTooltip(null);
+        window.addEventListener('click', close);
+        return () => window.removeEventListener('click', close);
     }, []);
 
-    // Close chart popover on outside click
+    // Close on Esc
     useEffect(() => {
-        const handleClickOutside = () => setChartPopover(null);
-        window.addEventListener('click', handleClickOutside);
-        return () => window.removeEventListener('click', handleClickOutside);
+        const onKey = (e) => { if (e.key === 'Escape') setLockedTooltip(null); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
     }, []);
 
+    // ── Data fetching ──────────────────────────────────────────────────────────
     const fetchData = async () => {
         setLoading(true);
         await Promise.all([fetchTransactions(), fetchCategories(), fetchProfile()]);
@@ -122,111 +124,69 @@ export default function Overview() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('first_name')
-                .eq('id', user.id)
-                .single();
-
+            const { data, error } = await supabase.from('profiles').select('first_name').eq('id', user.id).single();
             if (error && error.code !== 'PGRST116') throw error;
             setProfile(data);
-        } catch (err) {
-            console.error('Error fetching profile:', err);
-        }
+        } catch (err) { console.error('Error fetching profile:', err); }
     };
 
     const fetchTransactions = async () => {
         try {
-            const { data, error } = await supabase
-                .from('silver_transactions')
-                .select('*')
-                .order('date', { ascending: false });
-
+            const { data, error } = await supabase.from('silver_transactions').select('*').order('date', { ascending: false });
             if (error) throw error;
             setTransactions(data || []);
-        } catch (err) {
-            console.error('Error fetching transactions:', err);
-        }
+        } catch (err) { console.error('Error fetching transactions:', err); }
     };
 
     const fetchCategories = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-
-            const { data, error } = await supabase
-                .from('user_categories')
-                .select('name, color')
-                .eq('user_id', user.id);
-
+            const { data, error } = await supabase.from('user_categories').select('name, color').eq('user_id', user.id);
             if (error) throw error;
             setCategories(data || []);
-        } catch (err) {
-            console.error('Error fetching categories:', err);
-        }
+        } catch (err) { console.error('Error fetching categories:', err); }
     };
 
-    // Calculate effective date range
+    // ── Date range ─────────────────────────────────────────────────────────────
     const effectiveDateRange = useMemo(() => {
-        let start = new Date();
-        let end = new Date();
-
+        let start = new Date(), end = new Date();
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
-
-        if (timeRange === '30D') {
-            start.setDate(start.getDate() - 30);
-        } else if (timeRange === '3M') {
-            start.setMonth(start.getMonth() - 3);
-            start.setDate(1); // Usually nice to start at beginning of month for 3M
-        } else if (timeRange === '6M') {
-            start.setMonth(start.getMonth() - 6);
-            start.setDate(1);
-        } else if (timeRange === 'YTD') {
-            start = new Date(start.getFullYear(), 0, 1);
-        } else if (timeRange === '1Y') {
-            start.setFullYear(start.getFullYear() - 1);
-            start.setDate(1);
-        } else if (timeRange === 'Custom') {
+        if (timeRange === '30D') { start.setDate(start.getDate() - 30); }
+        else if (timeRange === '3M') { start.setMonth(start.getMonth() - 3); start.setDate(1); }
+        else if (timeRange === '6M') { start.setMonth(start.getMonth() - 6); start.setDate(1); }
+        else if (timeRange === 'YTD') { start = new Date(start.getFullYear(), 0, 1); }
+        else if (timeRange === '1Y') { start.setFullYear(start.getFullYear() - 1); start.setDate(1); }
+        else if (timeRange === 'Custom') {
             if (customStartDate) start = new Date(customStartDate + 'T00:00:00');
             if (customEndDate) end = new Date(customEndDate + 'T23:59:59');
         }
-
         return { start, end };
     }, [timeRange, customStartDate, customEndDate]);
 
-    // Filter transactions by date
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter(tx => {
-            const txDate = new Date(tx.date + 'T12:00:00'); // Midday to avoid timezone shifting
+    const filteredTransactions = useMemo(() => (
+        transactions.filter(tx => {
+            const txDate = new Date(tx.date + 'T12:00:00');
             return txDate >= effectiveDateRange.start && txDate <= effectiveDateRange.end;
-        });
-    }, [transactions, effectiveDateRange]);
+        })
+    ), [transactions, effectiveDateRange]);
 
-    // Auto-select category if none
-    // Derived category names list for backward compat
+    // ── Category helpers ───────────────────────────────────────────────────────
     const categoryNames = categories.map(c => c.name);
 
     useEffect(() => {
-        if (categoryNames.length > 0 && !selectedCategory) {
-            setSelectedCategory(categoryNames[0]);
-        }
+        if (categoryNames.length > 0 && !selectedCategory) setSelectedCategory(categoryNames[0]);
     }, [categoryNames, selectedCategory]);
 
-    // Bucket data
+    // ── Chart data ─────────────────────────────────────────────────────────────
     const chartData = useMemo(() => {
         const buckets = {};
-
         filteredTransactions.forEach(tx => {
-            // Only care about spending for trends
             if (tx.category === 'Income' || parseFloat(tx.amount) > 0) return;
-
             const amt = Math.abs(parseFloat(tx.amount));
             const date = new Date(tx.date + 'T12:00:00');
-            let bucketKey = '';
-            let sortKey = '';
-
+            let bucketKey = '', sortKey = '';
             if (groupBy === 'Daily') {
                 bucketKey = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                 sortKey = tx.date;
@@ -241,60 +201,31 @@ export default function Overview() {
                 bucketKey = date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
                 sortKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             }
-
-            if (!buckets[sortKey]) {
-                buckets[sortKey] = { label: bucketKey, sortKey: sortKey, total: 0, count: 0 };
-            }
-
+            if (!buckets[sortKey]) buckets[sortKey] = { label: bucketKey, sortKey, total: 0, count: 0 };
             const cat = tx.category || 'Uncategorized';
-            if (!buckets[sortKey][cat]) {
-                buckets[sortKey][cat] = 0;
-            }
-
+            if (!buckets[sortKey][cat]) buckets[sortKey][cat] = 0;
             buckets[sortKey][cat] += amt;
             buckets[sortKey].total += amt;
             buckets[sortKey].count += 1;
         });
-
-        // Convert to array and sort chronologically
         const sortedData = Object.values(buckets).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-
-        // Second pass: Calculate prevTotal, percentage change, and topCategory
         sortedData.forEach((bucket, index) => {
-            // Top Category ID
-            let topCat = null;
-            let topAmt = 0;
+            let topCat = null, topAmt = 0;
             Object.keys(bucket).forEach(k => {
-                if (!['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(k)) {
-                    if (bucket[k] > topAmt) {
-                        topAmt = bucket[k];
-                        topCat = k;
-                    }
+                if (!['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(k) && bucket[k] > topAmt) {
+                    topAmt = bucket[k]; topCat = k;
                 }
             });
             bucket.topCategory = topCat;
-
-            // Previous interval comparison
             if (index > 0) {
                 const prev = sortedData[index - 1].total;
                 bucket.prevTotal = prev;
-                if (prev > 0) {
-                    bucket.pctChange = ((bucket.total - prev) / prev) * 100;
-                } else if (bucket.total > 0) {
-                    bucket.pctChange = 100;
-                } else {
-                    bucket.pctChange = 0;
-                }
-            } else {
-                bucket.prevTotal = 0;
-                bucket.pctChange = null; // No previous data
-            }
+                bucket.pctChange = prev > 0 ? ((bucket.total - prev) / prev) * 100 : bucket.total > 0 ? 100 : 0;
+            } else { bucket.prevTotal = 0; bucket.pctChange = null; }
         });
-
         return sortedData;
     }, [filteredTransactions, groupBy]);
 
-    // Category aggregation and visibility logic
     const categoryTotals = useMemo(() => {
         const totals = {};
         chartData.forEach(bucket => {
@@ -307,216 +238,152 @@ export default function Overview() {
         return Object.entries(totals).sort((a, b) => b[1] - a[1]);
     }, [chartData]);
 
-    const defaultCategories = useMemo(() => {
-        return categoryTotals.slice(0, DEFAULT_VISIBLE_CATEGORIES).map(c => c[0]);
-    }, [categoryTotals]);
+    const defaultCategories = useMemo(() => categoryTotals.slice(0, DEFAULT_VISIBLE_CATEGORIES).map(c => c[0]), [categoryTotals]);
 
     const [userSelectedCategories, setUserSelectedCategories] = useState(null);
 
-    // Reset explicit selection when date range changes
-    useEffect(() => {
-        setUserSelectedCategories(null);
-    }, [effectiveDateRange]);
+    useEffect(() => { setUserSelectedCategories(null); }, [effectiveDateRange]);
 
-    const activeVisibleCategories = useMemo(() => {
-        if (userSelectedCategories !== null) return userSelectedCategories;
-        return defaultCategories;
-    }, [userSelectedCategories, defaultCategories]);
+    const activeVisibleCategories = useMemo(() => (
+        userSelectedCategories !== null ? userSelectedCategories : defaultCategories
+    ), [userSelectedCategories, defaultCategories]);
 
     const remainingCount = categoryTotals.length - activeVisibleCategories.length;
 
     const presentationChartData = useMemo(() => {
-        const activeVisibleSet = new Set(activeVisibleCategories);
+        const activeSet = new Set(activeVisibleCategories);
         return chartData.map(bucket => {
-            const newBucket = { ...bucket };
+            const nb = { ...bucket };
             let remainingSum = 0;
             Object.keys(bucket).forEach(k => {
                 if (!['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(k)) {
-                    if (!activeVisibleSet.has(k)) {
-                        remainingSum += bucket[k] || 0;
-                        delete newBucket[k];
-                    }
+                    if (!activeSet.has(k)) { remainingSum += bucket[k] || 0; delete nb[k]; }
                 }
             });
-            if (categoryTotals.length > activeVisibleCategories.length) {
-                newBucket['remaining'] = remainingSum;
-            }
-            return newBucket;
+            // Always include 'remaining' key (even if 0) so the Bar stays mounted and stacking is stable
+            nb['remaining'] = remainingSum;
+            return nb;
         });
     }, [chartData, activeVisibleCategories, categoryTotals.length]);
 
     const toggleCategoryVisibility = (catName) => {
         const current = userSelectedCategories !== null ? userSelectedCategories : defaultCategories;
-        if (current.includes(catName)) {
-            // Remove
-            setUserSelectedCategories(current.filter(c => c !== catName));
-        } else {
-            // Add
-            setUserSelectedCategories([...current, catName]);
-        }
+        setUserSelectedCategories(
+            current.includes(catName)
+                ? current.filter(c => c !== catName)
+                : [...current, catName]
+        );
     };
 
     const getColorForCategory = (catName, fallbackIndex = 0) => {
-        if (catName === 'remaining') return '#cbd5e1'; // slate-300
+        if (catName === 'remaining') return '#cbd5e1';
         const cat = categories.find(c => c.name === catName);
         if (cat?.color) return cat.color;
         const idx = categoryNames.indexOf(catName);
-        return COLORS[idx !== -1 ? idx % COLORS.length : fallbackIndex % COLORS.length];
+        return CATEGORY_COLORS[idx !== -1 ? idx % CATEGORY_COLORS.length : fallbackIndex % CATEGORY_COLORS.length];
     };
 
-    // Calculate dynamic insights based on intervals
+    // ── Dynamic insights ───────────────────────────────────────────────────────
     const dynamicInsights = useMemo(() => {
         if (!chartData || chartData.length < 2) return null;
-
-        // Current interval (last item) and Previous interval (second to last)
         const currentData = chartData[chartData.length - 1];
         const previousData = chartData[chartData.length - 2];
-
-        // 1. Spending Trend
         const spendingTrend = currentData.pctChange || 0;
-
-        // 2 & 3. Largest Shifts (Increase and Decrease)
-        let maxIncreaseCat = null;
-        let maxIncreasePct = -Infinity;
-        let maxDecreaseCat = null;
-        let maxDecreasePct = Infinity;
-
-        // Compare categories present in both or either
-        const allPossibleCats = new Set([...Object.keys(currentData), ...Object.keys(previousData)]);
-
-        allPossibleCats.forEach(cat => {
+        let maxIncreaseCat = null, maxIncreasePct = -Infinity;
+        let maxDecreaseCat = null, maxDecreasePct = Infinity;
+        const allCats = new Set([...Object.keys(currentData), ...Object.keys(previousData)]);
+        allCats.forEach(cat => {
             if (['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(cat)) return;
-
             const currVal = currentData[cat] || 0;
             const prevVal = previousData[cat] || 0;
-
             if (prevVal > 0) {
                 const pct = ((currVal - prevVal) / prevVal) * 100;
-                // Require at least $50 spend to trigger a "major shift" insight to avoid noise
-                if (pct > maxIncreasePct && currVal > 50) {
-                    maxIncreasePct = pct;
-                    maxIncreaseCat = cat;
-                }
-                if (pct < maxDecreasePct && prevVal > 50) {
-                    maxDecreasePct = pct;
-                    maxDecreaseCat = cat;
-                }
-            } else if (currVal > 50) { // New expense this interval
-                if (100 > maxIncreasePct) {
-                    maxIncreasePct = 100;
-                    maxIncreaseCat = cat;
-                }
+                if (pct > maxIncreasePct && currVal > 50) { maxIncreasePct = pct; maxIncreaseCat = cat; }
+                if (pct < maxDecreasePct && prevVal > 50) { maxDecreasePct = pct; maxDecreaseCat = cat; }
             }
         });
-
-        // 4. Anomaly Detection (e.g. highest spend in historical window)
-        let anomalyLabel = "In line with rolling average";
-        let anomalyValue = "";
-        let anomalyColor = "text-slate-500";
-        let anomalyBg = "bg-slate-100/50";
-
-        if (chartData.length >= 3) {
-            const history = chartData.slice(0, -1); // Exclude current
-            const historicalAvg = history.reduce((sum, b) => sum + b.total, 0) / history.length;
-            const highestHistorical = Math.max(...history.map(b => b.total));
-
-            if (currentData.total > highestHistorical) {
-                anomalyLabel = `Highest ${groupBy.toLowerCase()} spend`;
-                anomalyValue = `in the last ${history.length} intervals`;
-                anomalyColor = "text-rose-600";
-                anomalyBg = "bg-rose-50";
-            } else if (currentData.total > historicalAvg * 1.5) {
-                anomalyLabel = "Spending surge detected";
-                anomalyValue = `+${Math.round(((currentData.total - historicalAvg) / historicalAvg) * 100)}% vs average`;
-                anomalyColor = "text-amber-600";
-                anomalyBg = "bg-amber-50";
-            } else if (currentData.total < historicalAvg * 0.5 && currentData.total > 0) {
-                anomalyLabel = "Unusually low spending";
-                anomalyValue = `${Math.round((1 - (currentData.total / historicalAvg)) * 100)}% below average`;
-                anomalyColor = "text-emerald-600";
-                anomalyBg = "bg-emerald-50";
-            }
+        const history = chartData.slice(0, -1);
+        const historicalAvg = history.reduce((s, b) => s + b.total, 0) / history.length;
+        let anomalyLabel = 'Normal spending pattern', anomalyValue = 'No unusual activity detected';
+        let anomalyColor = 'text-slate-500', anomalyBg = '';
+        if (currentData.total === Math.max(...chartData.map(b => b.total))) {
+            anomalyLabel = `Highest ${groupBy.toLowerCase()} spend`;
+            anomalyValue = `in the last ${history.length} intervals`;
+            anomalyColor = 'text-rose-600'; anomalyBg = 'bg-rose-50';
+        } else if (currentData.total > historicalAvg * 1.5) {
+            anomalyLabel = 'Spending surge detected';
+            anomalyValue = `+${Math.round(((currentData.total - historicalAvg) / historicalAvg) * 100)}% vs average`;
+            anomalyColor = 'text-amber-600'; anomalyBg = 'bg-amber-50';
+        } else if (currentData.total < historicalAvg * 0.5 && currentData.total > 0) {
+            anomalyLabel = 'Unusually low spending';
+            anomalyValue = `${Math.round((1 - currentData.total / historicalAvg) * 100)}% below average`;
+            anomalyColor = 'text-emerald-600'; anomalyBg = 'bg-emerald-50';
         }
-
+        const intervalWord = groupBy.toLowerCase() === 'daily' ? 'day' : groupBy.toLowerCase().slice(0, -2);
         return {
-            trend: {
-                value: spendingTrend,
-                label: `vs previous ${groupBy.toLowerCase() === 'daily' ? 'day' : groupBy.toLowerCase().slice(0, -2)}`
-            },
-            increase: maxIncreaseCat ? {
-                category: maxIncreaseCat,
-                value: maxIncreasePct,
-                label: `vs previous ${groupBy.toLowerCase() === 'daily' ? 'day' : groupBy.toLowerCase().slice(0, -2)}`
-            } : null,
-            decrease: maxDecreaseCat ? {
-                category: maxDecreaseCat,
-                value: maxDecreasePct,
-                label: `vs previous ${groupBy.toLowerCase() === 'daily' ? 'day' : groupBy.toLowerCase().slice(0, -2)}`
-            } : null,
-            anomaly: {
-                label: anomalyLabel,
-                value: anomalyValue,
-                color: anomalyColor,
-                bg: anomalyBg
-            }
+            trend: { value: spendingTrend, label: `vs previous ${intervalWord}` },
+            increase: maxIncreaseCat ? { category: maxIncreaseCat, value: maxIncreasePct, label: `vs previous ${intervalWord}` } : null,
+            decrease: maxDecreaseCat ? { category: maxDecreaseCat, value: maxDecreasePct, label: `vs previous ${intervalWord}` } : null,
+            anomaly: { label: anomalyLabel, value: anomalyValue, color: anomalyColor, bg: anomalyBg },
         };
     }, [chartData, groupBy]);
 
-    const navigateToAnalysis = (payload, categoryFilter) => {
+    // ── Navigation ─────────────────────────────────────────────────────────────
+    const navigateToAnalysis = useCallback((payload, categoryFilter) => {
         if (!payload) return;
-
         let stateToPass = {};
-
-        if (groupBy === 'Daily') {
-            stateToPass = {
-                filterType: 'range',
-                startDate: payload.sortKey,
-                endDate: payload.sortKey
-            };
-        } else if (groupBy === 'Weekly') {
-            stateToPass = {
-                filterType: 'week',
-                selectedWeek: payload.sortKey // The sortKey is already the Monday YYYY-MM-DD
-            };
-        } else if (groupBy === 'Monthly') {
-            stateToPass = {
-                filterType: 'month',
-                selectedMonth: payload.sortKey // The sortKey is already YYYY-MM
-            };
-        }
-
-        if (categoryFilter) {
-            stateToPass.category = categoryFilter;
-        }
-
+        if (groupBy === 'Daily') stateToPass = { filterType: 'range', startDate: payload.sortKey, endDate: payload.sortKey };
+        else if (groupBy === 'Weekly') stateToPass = { filterType: 'week', selectedWeek: payload.sortKey };
+        else if (groupBy === 'Monthly') stateToPass = { filterType: 'month', selectedMonth: payload.sortKey };
+        if (categoryFilter) stateToPass.category = categoryFilter;
         navigate('/dashboard/analysis', { state: stateToPass });
+    }, [groupBy, navigate]);
+
+    // ── Bar click → locked tooltip ────────────────────────────────────────────
+    const handleBarClick = useCallback((category, barData, event) => {
+        if (event?.stopPropagation) event.stopPropagation();
+        const rect = chartContainerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        // Position relative to the chart container
+        const x = (event.clientX || 0) - rect.left;
+        const y = (event.clientY || 0) - rect.top;
+        setLockedTooltip({ category, payload: barData?.payload || barData, x, y });
+    }, []);
+
+    // ── Pill drag handlers ─────────────────────────────────────────────────────
+    const handlePillDragStart = (e, index) => {
+        e.dataTransfer.effectAllowed = 'move';
+        setDragIndex(index);
     };
 
-    const handleChartClick = (data) => {
-        if (!data || !data.activePayload || !data.activePayload[0]) return;
-        navigateToAnalysis(data.activePayload[0].payload, focusCategory ? selectedCategory : null);
+    const handlePillDragOver = (e, index) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverIndex(index);
     };
 
-    const handleStackedBarClick = (category, data, e) => {
-        if (e && e.stopPropagation) e.stopPropagation();
-
-        setTimeout(() => {
-            setChartPopover({
-                x: e.clientX,
-                y: e.clientY,
-                category: category,
-                payload: data.payload || data
-            });
-        }, 0);
+    const handlePillDrop = (e, dropIdx) => {
+        e.preventDefault();
+        if (dragIndex === null || dragIndex === dropIdx) { setDragIndex(null); setDragOverIndex(null); return; }
+        const current = [...(userSelectedCategories !== null ? userSelectedCategories : defaultCategories)];
+        const dragged = current[dragIndex];
+        current.splice(dragIndex, 1);
+        current.splice(dropIdx, 0, dragged);
+        setUserSelectedCategories(current);
+        setDragIndex(null);
+        setDragOverIndex(null);
     };
 
+    const handlePillDragEnd = () => { setDragIndex(null); setDragOverIndex(null); };
+
+    // ── Loading state ──────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
                 <div className="flex flex-col items-center gap-3 text-slate-500">
                     <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     <p className="font-medium text-sm">Loading Overview...</p>
                 </div>
@@ -524,8 +391,7 @@ export default function Overview() {
         );
     }
 
-    const firstName = profile?.first_name || 'there';
-
+    // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             <header className="flex items-end justify-between gap-4 flex-wrap">
@@ -535,7 +401,7 @@ export default function Overview() {
                 </div>
             </header>
 
-            {/* Top-Level Controls */}
+            {/* ── Top-Level Controls ──────────────────────────────────────── */}
             <div className="sticky top-0 z-30 flex flex-col md:flex-row gap-6 bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200 shadow-sm items-center">
                 <div className="flex flex-wrap items-center gap-6 w-full">
                     <div className="flex flex-col gap-1.5 flex-1 min-w-[320px]">
@@ -547,8 +413,7 @@ export default function Overview() {
                                     onClick={() => setTimeRange(range)}
                                     className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 ${timeRange === range
                                         ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                                        }`}
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                                 >
                                     {range}
                                 </button>
@@ -560,30 +425,19 @@ export default function Overview() {
                         <div className="flex flex-col gap-1.5 flex-1 min-w-[280px]">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Custom Dates</label>
                             <div className="flex items-center gap-2">
-                                <input
-                                    type="date"
-                                    value={customStartDate}
-                                    onChange={e => setCustomStartDate(e.target.value)}
-                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-text"
-                                />
+                                <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}
+                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-text" />
                                 <span className="text-slate-400 text-sm font-medium">to</span>
-                                <input
-                                    type="date"
-                                    value={customEndDate}
-                                    onChange={e => setCustomEndDate(e.target.value)}
-                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-text"
-                                />
+                                <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)}
+                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-text" />
                             </div>
                         </div>
                     )}
 
                     <div className="flex flex-col gap-1.5 min-w-[140px]">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group By</label>
-                        <select
-                            value={groupBy}
-                            onChange={e => setGroupBy(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-pointer"
-                        >
+                        <select value={groupBy} onChange={e => setGroupBy(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-pointer">
                             <option value="Daily">Daily</option>
                             <option value="Weekly">Weekly</option>
                             <option value="Monthly">Monthly</option>
@@ -594,78 +448,42 @@ export default function Overview() {
                 <div className="w-full md:w-auto flex md:ml-auto items-center justify-between md:justify-end gap-6 border-t md:border-t-0 md:border-l border-slate-100 pt-5 md:pt-0 md:pl-6 shrink-0 h-full">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <div className="relative flex items-center">
-                            <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={focusCategory}
-                                onChange={() => setFocusCategory(!focusCategory)}
-                            />
-                            <div className={`block w-11 h-6 rounded-full transition-all duration-300 ease-in-out ${focusCategory ? 'bg-indigo-500 shadow-inner' : 'bg-slate-200 shadow-inner'}`}></div>
-                            <div className={`absolute left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out shadow-sm ${focusCategory ? 'transform translate-x-5' : ''}`}></div>
+                            <input type="checkbox" className="sr-only" checked={focusCategory} onChange={() => setFocusCategory(!focusCategory)} />
+                            <div className={`block w-11 h-6 rounded-full transition-all duration-300 ease-in-out ${focusCategory ? 'bg-indigo-500 shadow-inner' : 'bg-slate-200 shadow-inner'}`} />
+                            <div className={`absolute left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out shadow-sm ${focusCategory ? 'transform translate-x-5' : ''}`} />
                         </div>
                         <span className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">Focus on Category</span>
                     </label>
 
                     {focusCategory && (
-                        <select
-                            value={selectedCategory}
-                            onChange={e => setSelectedCategory(e.target.value)}
-                            className="bg-indigo-50/50 border border-indigo-200 text-indigo-700 font-bold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block min-w-[160px] p-2 outline-none cursor-pointer animate-in fade-in slide-in-from-right-4 duration-300"
-                        >
-                            {categoryNames.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
+                        <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
+                            className="bg-indigo-50/50 border border-indigo-200 text-indigo-700 font-bold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block min-w-[160px] p-2 outline-none cursor-pointer animate-in fade-in slide-in-from-right-4 duration-300">
+                            {categoryNames.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                             <option value="Uncategorized">Uncategorized</option>
                         </select>
                     )}
                 </div>
             </div>
 
-            {/* Summary Grid */}
+            {/* ── Summary Grid ────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {dynamicInsights ? (
                     <>
-                        {/* Spending Trend */}
-                        <InsightCard
-                            title="Spending Trend"
-                            icon={<TrendingUp size={12} />}
-                            primaryMsg={
-                                <>
-                                    {dynamicInsights.trend.value > 0 ? <ArrowUpRight size={18} /> : dynamicInsights.trend.value < 0 ? <ArrowDownRight size={18} /> : null}
-                                    {Math.abs(dynamicInsights.trend.value).toFixed(1)}%
-                                </>
-                            }
+                        <InsightCard title="Spending Trend" icon={<TrendingUp size={12} />}
+                            primaryMsg={<>{dynamicInsights.trend.value > 0 ? <ArrowUpRight size={18} /> : dynamicInsights.trend.value < 0 ? <ArrowDownRight size={18} /> : null}{Math.abs(dynamicInsights.trend.value).toFixed(1)}%</>}
                             subMsg={dynamicInsights.trend.label}
-                            colorClass={dynamicInsights.trend.value > 0 ? "text-rose-600" : dynamicInsights.trend.value < 0 ? "text-emerald-600" : "text-slate-600"}
-                        />
-
-                        {/* Largest Increase */}
-                        <InsightCard
-                            title="Largest Increase"
-                            icon={<ArrowUpRight size={12} className="text-rose-500" />}
-                            primaryMsg={dynamicInsights.increase ? `${dynamicInsights.increase.category} +${Math.round(dynamicInsights.increase.value)}%` : "No major increases"}
-                            subMsg={dynamicInsights.increase ? dynamicInsights.increase.label : " "}
-                            colorClass={dynamicInsights.increase ? "text-slate-800" : "text-slate-400"}
-                        />
-
-                        {/* Largest Decrease */}
-                        <InsightCard
-                            title="Largest Decrease"
-                            icon={<ArrowDownRight size={12} className="text-emerald-500" />}
-                            primaryMsg={dynamicInsights.decrease ? `${dynamicInsights.decrease.category} ${Math.round(dynamicInsights.decrease.value)}%` : "No major decreases"}
-                            subMsg={dynamicInsights.decrease ? dynamicInsights.decrease.label : " "}
-                            colorClass={dynamicInsights.decrease ? "text-slate-800" : "text-slate-400"}
-                        />
-
-                        {/* Anomaly Detection */}
-                        <InsightCard
-                            title="Anomaly Detection"
-                            icon={<Activity size={12} className={dynamicInsights.anomaly.color} />}
-                            primaryMsg={dynamicInsights.anomaly.label}
-                            subMsg={dynamicInsights.anomaly.value}
-                            colorClass={dynamicInsights.anomaly.color}
-                            bgClass={dynamicInsights.anomaly.bg}
-                        />
+                            colorClass={dynamicInsights.trend.value > 0 ? 'text-rose-600' : dynamicInsights.trend.value < 0 ? 'text-emerald-600' : 'text-slate-600'} />
+                        <InsightCard title="Largest Increase" icon={<ArrowUpRight size={12} className="text-rose-500" />}
+                            primaryMsg={dynamicInsights.increase ? `${dynamicInsights.increase.category} +${Math.round(dynamicInsights.increase.value)}%` : 'No major increases'}
+                            subMsg={dynamicInsights.increase ? dynamicInsights.increase.label : ' '}
+                            colorClass={dynamicInsights.increase ? 'text-slate-800' : 'text-slate-400'} />
+                        <InsightCard title="Largest Decrease" icon={<ArrowDownRight size={12} className="text-emerald-500" />}
+                            primaryMsg={dynamicInsights.decrease ? `${dynamicInsights.decrease.category} ${Math.round(dynamicInsights.decrease.value)}%` : 'No major decreases'}
+                            subMsg={dynamicInsights.decrease ? dynamicInsights.decrease.label : ' '}
+                            colorClass={dynamicInsights.decrease ? 'text-slate-800' : 'text-slate-400'} />
+                        <InsightCard title="Anomaly Detection" icon={<Activity size={12} className={dynamicInsights.anomaly.color} />}
+                            primaryMsg={dynamicInsights.anomaly.label} subMsg={dynamicInsights.anomaly.value}
+                            colorClass={dynamicInsights.anomaly.color} bgClass={dynamicInsights.anomaly.bg} />
                     </>
                 ) : (
                     <div className="col-span-1 md:col-span-2 lg:col-span-4 p-6 bg-slate-50 text-slate-400 font-medium text-sm rounded-xl border border-slate-200 text-center flex items-center justify-center gap-2">
@@ -674,25 +492,51 @@ export default function Overview() {
                 )}
             </div>
 
+            {/* ── Spending Trends Chart ────────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-8">
-                {/* Main Trend Chart */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[450px]">
+
+                    {/* Chart header + draggable pill row */}
                     <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900">Spending Trends</h3>
-                            <p className="text-sm text-slate-500">Click on any {groupBy.toLowerCase()} interval to see a detailed breakdown.</p>
+                            <p className="text-sm text-slate-500">
+                                {focusCategory
+                                    ? 'Click a bar to see details and actions.'
+                                    : 'Drag pills to reorder stack. Click a segment to see details.'}
+                            </p>
                         </div>
 
                         {!focusCategory && (
                             <div className="flex flex-wrap items-center gap-2 max-w-full">
                                 {activeVisibleCategories.map((cat, idx) => (
-                                    <div key={cat} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 shadow-sm text-xs font-bold text-slate-700">
-                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getColorForCategory(cat, idx) }} />
-                                        {cat}
-                                        <button onClick={() => toggleCategoryVisibility(cat)} className="ml-0.5 text-slate-400 hover:text-slate-700 transition-colors">
-                                            <X size={12} strokeWidth={2.5} />
-                                        </button>
-                                    </div>
+                                    <React.Fragment key={cat}>
+                                        {/* Insertion line — shown BEFORE the drop target */}
+                                        {dragIndex !== null && dragOverIndex === idx && dragIndex !== idx && (
+                                            <div className="w-0.5 h-6 bg-indigo-500 rounded-full shrink-0 animate-in fade-in duration-100" />
+                                        )}
+                                        <div
+                                            draggable
+                                            onDragStart={(e) => handlePillDragStart(e, idx)}
+                                            onDragOver={(e) => handlePillDragOver(e, idx)}
+                                            onDrop={(e) => handlePillDrop(e, idx)}
+                                            onDragEnd={handlePillDragEnd}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm text-xs font-bold text-slate-700 cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${dragIndex === idx
+                                                ? 'opacity-40 scale-95 bg-slate-100 border-slate-300'
+                                                : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-md'
+                                                }`}
+                                        >
+                                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getColorForCategory(cat, idx) }} />
+                                            {cat}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleCategoryVisibility(cat); }}
+                                                className="ml-0.5 text-slate-400 hover:text-slate-700 transition-colors"
+                                                onMouseDown={e => e.stopPropagation()}
+                                            >
+                                                <X size={12} strokeWidth={2.5} />
+                                            </button>
+                                        </div>
+                                    </React.Fragment>
                                 ))}
 
                                 {remainingCount > 0 && (
@@ -701,9 +545,7 @@ export default function Overview() {
                                         <select
                                             className="appearance-none bg-white border border-dashed border-slate-300 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 hover:bg-white font-bold text-xs rounded-full pl-7 pr-7 py-1.5 outline-none cursor-pointer transition-all shadow-sm"
                                             value=""
-                                            onChange={(e) => {
-                                                if (e.target.value) toggleCategoryVisibility(e.target.value);
-                                            }}
+                                            onChange={e => { if (e.target.value) toggleCategoryVisibility(e.target.value); }}
                                         >
                                             <option value="" disabled>Remaining ({remainingCount})</option>
                                             {categoryTotals.filter(c => !activeVisibleCategories.includes(c[0])).map(c => (
@@ -719,70 +561,58 @@ export default function Overview() {
                         )}
                     </div>
 
-                    <div className="flex-1 w-full min-h-[350px]">
+                    {/* Chart area — position:relative so locked card is anchored */}
+                    <div className="flex-1 w-full min-h-[350px] relative" ref={chartContainerRef}>
                         {chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 {focusCategory ? (
-                                    <BarChart data={chartData} onClick={handleChartClick} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={(val) => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
-                                        <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 4 }} content={<CustomTooltip />} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
+                                        <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 4 }} content={<HoverTooltip />} />
                                         <Bar
                                             dataKey={selectedCategory}
-                                            fill="#6366f1"
+                                            fill={getColorForCategory(selectedCategory)}
                                             radius={[4, 4, 0, 0]}
-                                            className="cursor-pointer hover:opacity-80 transition-opacity"
-                                            onClick={(data, idx, e) => handleStackedBarClick(selectedCategory, data, e)}
+                                            className="cursor-pointer"
+                                            onClick={(data, idx, e) => handleBarClick(selectedCategory, data, e)}
                                         >
-                                            <LabelList
-                                                dataKey={selectedCategory}
-                                                position="top"
-                                                formatter={(val) => val > 0 ? `$${Math.round(val)}` : ''}
-                                                style={{ fontSize: '10px', fill: '#64748b', fontWeight: 600 }}
-                                            />
+                                            <LabelList dataKey={selectedCategory} position="top"
+                                                formatter={val => val > 0 ? `$${Math.round(val)}` : ''}
+                                                style={{ fontSize: '10px', fill: '#64748b', fontWeight: 600 }} />
                                         </Bar>
                                     </BarChart>
                                 ) : (
-                                    <BarChart data={presentationChartData} onClick={handleChartClick} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <BarChart data={presentationChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={(val) => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
-                                        <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 6 }} content={<CustomTooltip />} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
+                                        <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 6 }} content={<HoverTooltip />} />
                                         {activeVisibleCategories.map((cat, index) => {
+                                            // last user-category bar = topmost when no remaining
                                             const isTop = remainingCount === 0 && index === activeVisibleCategories.length - 1;
                                             return (
-                                                <Bar
-                                                    key={cat}
-                                                    dataKey={cat}
-                                                    stackId="a"
+                                                <Bar key={cat} dataKey={cat} stackId="a"
                                                     fill={getColorForCategory(cat, index)}
-                                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                    className="cursor-pointer"
                                                     radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                                                    onClick={(data, idx, e) => handleStackedBarClick(cat, data, e)}
+                                                    onClick={(data, idx, e) => handleBarClick(cat, data, e)}
                                                 />
                                             );
                                         })}
-                                        {remainingCount > 0 && (
-                                            <Bar
-                                                dataKey="remaining"
-                                                name={`Remaining ${remainingCount} categor${remainingCount === 1 ? 'y' : 'ies'}`}
-                                                stackId="a"
-                                                fill="#cbd5e1"
-                                                className="cursor-pointer hover:opacity-80 transition-opacity"
-                                                radius={[4, 4, 0, 0]}
-                                                onClick={(data, idx, e) => handleStackedBarClick('Remaining', data, e)}
-                                            />
-                                        )}
-                                        {/* Invisible Line tracking the total sum to perfectly anchor and horizontally center the total labels */}
+                                        {/* Always rendered LAST → permanently at top of stack. Never conditionally unmounted. */}
+                                        <Bar key="remaining" dataKey="remaining"
+                                            name={`Remaining ${remainingCount} categor${remainingCount === 1 ? 'y' : 'ies'}`}
+                                            stackId="a" fill="#cbd5e1"
+                                            className={remainingCount > 0 ? 'cursor-pointer' : ''}
+                                            radius={remainingCount > 0 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                                            onClick={remainingCount > 0 ? (data, idx, e) => handleBarClick('Remaining', data, e) : undefined}
+                                        />
                                         <Line dataKey="total" stroke="transparent" dot={false} activeDot={false} isAnimationActive={false}>
-                                            <LabelList
-                                                dataKey="total"
-                                                position="top"
-                                                offset={8}
-                                                formatter={(val) => val > 0 ? `$${Math.round(val)}` : ''}
-                                                style={{ fontSize: '10px', fill: '#64748b', fontWeight: 600 }}
-                                            />
+                                            <LabelList dataKey="total" position="top" offset={8}
+                                                formatter={val => val > 0 ? `$${Math.round(val)}` : ''}
+                                                style={{ fontSize: '10px', fill: '#64748b', fontWeight: 600 }} />
                                         </Line>
                                     </BarChart>
                                 )}
@@ -793,66 +623,106 @@ export default function Overview() {
                                 <p className="text-sm font-medium">No spending data for this period</p>
                             </div>
                         )}
+
+                        {/* ── Locked expanded card (anchored in chart) ───────── */}
+                        {lockedTooltip && (
+                            <div
+                                className="absolute z-50 pointer-events-auto"
+                                style={{
+                                    left: Math.min(lockedTooltip.x, (chartContainerRef.current?.offsetWidth || 400) - 210),
+                                    top: Math.max(lockedTooltip.y - 12, 0),
+                                    transform: 'translate(-50%, -100%)',
+                                }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/60 w-52 overflow-hidden animate-in zoom-in-95 fade-in duration-150">
+                                    {/* Header */}
+                                    <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            {lockedTooltip.category !== 'Remaining' && (
+                                                <div className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                    style={{ backgroundColor: getColorForCategory(lockedTooltip.category) }} />
+                                            )}
+                                            <span className="text-xs font-bold text-slate-800 truncate max-w-[120px]">{lockedTooltip.category}</span>
+                                        </div>
+                                        <button onClick={() => setLockedTooltip(null)} className="text-slate-300 hover:text-slate-500 transition-colors">
+                                            <X size={13} />
+                                        </button>
+                                    </div>
+                                    {/* Stats */}
+                                    <div className="px-4 py-2.5 space-y-1">
+                                        {(() => {
+                                            const cat = lockedTooltip.category;
+                                            const payload = lockedTooltip.payload || {};
+                                            // Recharts Bar onClick gives us the full payload object
+                                            const amount = payload[cat] ?? 0;
+                                            const total = payload.total || 0;
+                                            const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : '0.0';
+                                            const label = payload.label || '';
+                                            return (
+                                                <>
+                                                    <p className="text-[10px] text-slate-400 font-medium">{label}</p>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-slate-500">Spend</span>
+                                                        <span className="text-sm font-bold text-slate-800">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-slate-500">% of total</span>
+                                                        <span className="text-xs font-bold text-indigo-600">{pct}%</span>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                    {/* Action buttons */}
+                                    <div className="px-2 pb-2 space-y-0.5">
+                                        {lockedTooltip.category !== 'Remaining' && !focusCategory && (
+                                            <button
+                                                className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
+                                                onClick={() => {
+                                                    setFocusCategory(true);
+                                                    setSelectedCategory(lockedTooltip.category);
+                                                    setLockedTooltip(null);
+                                                }}
+                                            >
+                                                <Tag size={13} className="text-indigo-400" />
+                                                Focus on Category
+                                            </button>
+                                        )}
+                                        {focusCategory && (
+                                            <button
+                                                className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2"
+                                                onClick={() => { setFocusCategory(false); setLockedTooltip(null); }}
+                                            >
+                                                <LayoutDashboard size={13} className="text-slate-400" />
+                                                View All Categories
+                                            </button>
+                                        )}
+                                        <button
+                                            className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2"
+                                            onClick={() => {
+                                                navigateToAnalysis(lockedTooltip.payload, lockedTooltip.category !== 'Remaining' ? lockedTooltip.category : null);
+                                                setLockedTooltip(null);
+                                            }}
+                                        >
+                                            <ArrowUpRight size={13} className="text-slate-400" />
+                                            View Breakdown
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Compressed Pro Tip at bottom */}
+            {/* ── Pro Tip ──────────────────────────────────────────────────── */}
             <div className="bg-indigo-50/30 border border-indigo-100/50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
                 <Info className="text-indigo-400 shrink-0" size={18} />
                 <p className="text-indigo-900/60 text-xs font-medium">
-                    Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-indigo-700">Categories & Rules</button> to customize how your transactions are sorted.
+                    Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-indigo-700">Categories &amp; Rules</button> to customize how your transactions are sorted.
                 </p>
             </div>
-
-            {/* Click Action Popover */}
-            {chartPopover && (
-                <div
-                    className="fixed z-[100] bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-1.5 min-w-[200px] animate-in zoom-in-95 duration-200"
-                    style={{ top: Math.min(chartPopover.y, window.innerHeight - 150), left: Math.min(chartPopover.x, window.innerWidth - 220) }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-1">
-                        {chartPopover.payload.label}
-                    </div>
-                    {focusCategory ? (
-                        <button
-                            className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors flex items-center gap-2.5"
-                            onClick={() => {
-                                setFocusCategory(false);
-                                setChartPopover(null);
-                            }}
-                        >
-                            <LayoutDashboard size={16} className="text-slate-400" />
-                            View All Categories
-                        </button>
-                    ) : (
-                        chartPopover.category !== 'Remaining' && (
-                            <button
-                                className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2.5"
-                                onClick={() => {
-                                    setFocusCategory(true);
-                                    setSelectedCategory(chartPopover.category);
-                                    setChartPopover(null);
-                                }}
-                            >
-                                <Tag size={16} className={chartPopover.category ? "text-indigo-500" : "text-slate-400"} />
-                                Focus on {chartPopover.category}
-                            </button>
-                        )
-                    )}
-                    <button
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2.5"
-                        onClick={() => {
-                            navigateToAnalysis(chartPopover.payload, chartPopover.category === 'Remaining' ? null : chartPopover.category);
-                            setChartPopover(null);
-                        }}
-                    >
-                        <ArrowRight size={16} className="text-slate-400" />
-                        View Breakdown
-                    </button>
-                </div>
-            )}
         </div>
     );
 }

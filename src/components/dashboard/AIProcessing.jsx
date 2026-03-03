@@ -229,7 +229,8 @@ export default function AIProcessing() {
     const startEditCategory = (cat) => {
         setEditingCat(cat);
         setEditCatName(cat.name);
-        setEditCatColor(cat.color || DEFAULT_COLORS[0]);
+        const idx = categories.indexOf(cat);
+        setEditCatColor(cat.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length]);
     };
 
     const cancelEditCategory = () => {
@@ -585,7 +586,7 @@ export default function AIProcessing() {
                                 <form onSubmit={handleAddCategory} className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                                     <div className="flex gap-2">
                                         <div
-                                            className="relative shrink-0 w-9 h-9 rounded-lg border border-slate-200 overflow-hidden cursor-pointer bg-white hover:border-indigo-300 transition-colors"
+                                            className="relative shrink-0 w-9 h-9 rounded-full border border-slate-200 overflow-hidden cursor-pointer bg-white hover:border-indigo-300 transition-colors"
                                             style={{ backgroundColor: newCatColor }}
                                         >
                                             <input
@@ -628,7 +629,7 @@ export default function AIProcessing() {
                                                 /* Edit inline */
                                                 <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-indigo-50/50 border border-indigo-100">
                                                     <div
-                                                        className="relative shrink-0 w-7 h-7 rounded-md border border-indigo-200 overflow-hidden cursor-pointer"
+                                                        className="relative shrink-0 w-7 h-7 rounded-full border border-indigo-200 overflow-hidden cursor-pointer"
                                                         style={{ backgroundColor: editCatColor }}
                                                     >
                                                         <input

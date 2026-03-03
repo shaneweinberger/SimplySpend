@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#0ea5e9', '#3b82f6'];
+import { CATEGORY_COLORS } from '../../lib/categoryColors';
 
 export default function Analysis() {
     const location = useLocation();
@@ -228,7 +228,7 @@ export default function Analysis() {
     const getColor = (catName, fallbackIndex = 0) => {
         const cat = categories.find(c => c.name === catName);
         if (cat?.color) return cat.color;
-        return COLORS[fallbackIndex % COLORS.length];
+        return CATEGORY_COLORS[fallbackIndex % CATEGORY_COLORS.length];
     };
 
     const addFilter = (field) => {
