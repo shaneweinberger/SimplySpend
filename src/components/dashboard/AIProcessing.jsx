@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { theme } from '../../theme';
 import {
     Tags,
     Zap,
@@ -27,7 +28,7 @@ const DEFAULT_COLORS = [
 function ConfirmModal({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, danger = false }) {
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-surface-card rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
                 <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
                 <p className="text-sm text-slate-500 mb-6 leading-relaxed">{message}</p>
                 <div className="flex gap-3">
@@ -41,7 +42,7 @@ function ConfirmModal({ title, message, confirmLabel = 'Confirm', cancelLabel = 
                         onClick={onConfirm}
                         className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-sm ${danger
                             ? 'bg-rose-500 hover:bg-rose-600'
-                            : 'bg-indigo-600 hover:bg-indigo-700'
+                            : 'bg-accent hover:bg-accent-hover'
                             }`}
                     >
                         {confirmLabel}
@@ -516,7 +517,7 @@ export default function AIProcessing() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
-                <Loader2 className="animate-spin text-indigo-600" size={32} />
+                <Loader2 className="animate-spin text-accent" size={32} />
             </div>
         );
     }
@@ -527,24 +528,24 @@ export default function AIProcessing() {
             {/* ── Page Header ──────────────────────────────────────────── */}
             <div className="mb-10 flex flex-col md:flex-row md:items-start justify-between gap-6">
                 <div className="max-w-xl">
-                    <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Configure AI Processing</h1>
-                    <p className="text-sm text-slate-400 mt-0.5">Manage the categories and AI rules used to process your transactions into clean financial data.</p>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Configure AI Processing</h1>
+                    <p className="text-slate-500 mt-1">Manage the categories and AI rules used to process your transactions into clean financial data.</p>
                 </div>
 
                 <div className="flex flex-col items-end gap-2 shrink-0">
                     <button
                         onClick={openReprocessModal}
                         disabled={!isDirty}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2.5 transition-all shadow-sm ${isDirty
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 cursor-pointer'
+                        className={`px-6 py-3 rounded-xl text-base font-bold flex items-center gap-3 transition-all shadow-md ${isDirty
+                            ? 'bg-accent text-white hover:bg-accent-hover shadow-accent-shadow cursor-pointer scale-[1.02]'
                             : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
                             }`}
                     >
-                        <RefreshCw size={16} className={isDirty ? '' : 'opacity-40'} />
+                        <RefreshCw size={20} className={isDirty ? '' : 'opacity-40'} />
                         Reprocess Transactions
                     </button>
                     {!isDirty && (
-                        <p className="text-[10px] text-slate-400 font-medium">Update categories or rules to reprocess data</p>
+                        <p className="text-xs text-slate-400 font-medium">Update categories or rules to reprocess data</p>
                     )}
                 </div>
             </div>
@@ -563,16 +564,16 @@ export default function AIProcessing() {
 
                 {/* ─── LEFT: Categories ────────────────────────────────── */}
                 <div className="lg:col-span-5">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-surface-card rounded-xl border border-divider shadow-sm">
                         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2.5">
-                            <Tags size={16} className="text-indigo-500" />
+                            <Tags size={16} className="text-accent" />
                             <h2 className="text-sm font-bold text-slate-800">Categories</h2>
                             <span className="text-xs text-slate-400 font-medium">{categories.length}</span>
                             <button
                                 onClick={() => { setShowCatForm(!showCatForm); setEditingCat(null); }}
                                 className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${showCatForm
                                     ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+                                    : 'bg-accent text-white hover:bg-accent-hover shadow-sm'
                                     }`}
                             >
                                 {showCatForm ? <X size={12} /> : <Plus size={12} />}
@@ -583,10 +584,10 @@ export default function AIProcessing() {
                         <div className="p-5 space-y-4">
                             {/* Hideable add category form */}
                             {showCatForm && (
-                                <form onSubmit={handleAddCategory} className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                                <form onSubmit={handleAddCategory} className="bg-accent-light/50 border border-accent-light rounded-xl p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                                     <div className="flex gap-2">
                                         <div
-                                            className="relative shrink-0 w-9 h-9 rounded-full border border-slate-200 overflow-hidden cursor-pointer bg-white hover:border-indigo-300 transition-colors"
+                                            className="relative shrink-0 w-9 h-9 rounded-full border border-slate-200 overflow-hidden cursor-pointer bg-white hover:border-accent-border transition-colors"
                                             style={{ backgroundColor: newCatColor }}
                                         >
                                             <input
@@ -602,7 +603,7 @@ export default function AIProcessing() {
                                             placeholder="Category name…"
                                             value={newCatName}
                                             onChange={(e) => setNewCatName(e.target.value)}
-                                            className="flex-1 text-sm px-3 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-1 focus:ring-indigo-200 placeholder:text-slate-400"
+                                            className="flex-1 text-sm px-3 py-2 bg-white border border-accent-ring rounded-lg outline-none focus:ring-1 focus:ring-accent-ring placeholder:text-slate-400"
                                             autoFocus
                                         />
                                     </div>
@@ -610,7 +611,7 @@ export default function AIProcessing() {
                                         <button
                                             type="submit"
                                             disabled={!newCatName.trim()}
-                                            className="px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all"
+                                            className="px-4 py-2 text-xs font-bold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-all"
                                         >
                                             Save Category
                                         </button>
@@ -627,9 +628,9 @@ export default function AIProcessing() {
                                         <div key={cat.id}>
                                             {editingCat?.id === cat.id ? (
                                                 /* Edit inline */
-                                                <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-indigo-50/50 border border-indigo-100">
+                                                <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-accent-light/50 border border-accent-light">
                                                     <div
-                                                        className="relative shrink-0 w-7 h-7 rounded-full border border-indigo-200 overflow-hidden cursor-pointer"
+                                                        className="relative shrink-0 w-7 h-7 rounded-full border border-accent-ring overflow-hidden cursor-pointer"
                                                         style={{ backgroundColor: editCatColor }}
                                                     >
                                                         <input
@@ -643,11 +644,11 @@ export default function AIProcessing() {
                                                         type="text"
                                                         value={editCatName}
                                                         onChange={(e) => setEditCatName(e.target.value)}
-                                                        className="flex-1 text-sm px-2 py-1 bg-white border border-indigo-200 rounded-md outline-none focus:ring-1 focus:ring-indigo-200"
+                                                        className="flex-1 text-sm px-2 py-1 bg-white border border-accent-ring rounded-md outline-none focus:ring-1 focus:ring-accent-ring"
                                                         autoFocus
                                                         onKeyDown={(e) => { if (e.key === 'Enter') saveEditCategory(); if (e.key === 'Escape') cancelEditCategory(); }}
                                                     />
-                                                    <button onClick={saveEditCategory} className="p-1 text-indigo-600 hover:text-indigo-800 transition-colors">
+                                                    <button onClick={saveEditCategory} className="p-1 text-accent hover:text-accent-light-text transition-colors">
                                                         <CheckCircle2 size={16} />
                                                     </button>
                                                     <button onClick={cancelEditCategory} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
@@ -665,7 +666,7 @@ export default function AIProcessing() {
                                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
                                                         <button
                                                             onClick={() => startEditCategory(cat)}
-                                                            className="p-1 text-slate-300 hover:text-indigo-500 rounded transition-colors"
+                                                            className="p-1 text-slate-300 hover:text-accent rounded transition-colors"
                                                         >
                                                             <Pencil size={13} />
                                                         </button>
@@ -688,7 +689,7 @@ export default function AIProcessing() {
 
                 {/* ─── RIGHT: Rules ────────────────────────────────────── */}
                 <div className="lg:col-span-7">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-surface-card rounded-xl border border-divider shadow-sm">
                         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2.5">
                             <Zap size={16} className="text-amber-500" />
                             <h2 className="text-sm font-bold text-slate-800">AI Rules</h2>
@@ -705,7 +706,7 @@ export default function AIProcessing() {
                                 onClick={() => { setShowRuleForm(!showRuleForm); cancelEditRule(); }}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${showRuleForm
                                     ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    : 'bg-accent text-white hover:bg-accent-hover'
                                     }`}
                             >
                                 {showRuleForm ? <X size={13} /> : <Plus size={13} />}
@@ -716,13 +717,13 @@ export default function AIProcessing() {
                         <div className="p-5 space-y-3">
                             {/* New rule form */}
                             {showRuleForm && (
-                                <form onSubmit={handleAddRule} className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                                <form onSubmit={handleAddRule} className="bg-accent-light/50 border border-accent-light rounded-xl p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
                                     <input
                                         type="text"
                                         placeholder="Rule name (optional)"
                                         value={newRuleName}
                                         onChange={(e) => setNewRuleName(e.target.value)}
-                                        className="w-full text-sm px-3 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-1 focus:ring-indigo-200 placeholder:text-slate-400"
+                                        className="w-full text-sm px-3 py-2 bg-white border border-accent-ring rounded-lg outline-none focus:ring-1 focus:ring-accent-ring placeholder:text-slate-400"
                                     />
                                     <textarea
                                         required
@@ -730,17 +731,17 @@ export default function AIProcessing() {
                                         placeholder='e.g. "All transactions labeled TD Visa payment should be deleted"'
                                         value={newRuleText}
                                         onChange={(e) => setNewRuleText(e.target.value)}
-                                        className="w-full text-sm px-3 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-1 focus:ring-indigo-200 resize-none placeholder:text-slate-400"
+                                        className="w-full text-sm px-3 py-2 bg-white border border-accent-ring rounded-lg outline-none focus:ring-1 focus:ring-accent-ring resize-none placeholder:text-slate-400"
                                     />
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5 text-xs text-indigo-500/70">
+                                        <div className="flex items-center gap-1.5 text-xs text-accent/70">
                                             <Info size={12} />
                                             <span>Sent to Gemini as a strict processing instruction.</span>
                                         </div>
                                         <button
                                             type="submit"
                                             disabled={!newRuleText.trim()}
-                                            className="px-4 py-2 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all"
+                                            className="px-4 py-2 text-sm font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-all"
                                         >
                                             Save Rule
                                         </button>
@@ -753,7 +754,7 @@ export default function AIProcessing() {
                                 <div className="text-center py-10">
                                     <Zap size={36} className="mx-auto text-slate-200 mb-3" />
                                     <p className="text-sm text-slate-500 font-medium">No rules configured yet.</p>
-                                    <button onClick={() => setShowRuleForm(true)} className="mt-3 text-sm text-indigo-600 font-semibold hover:underline">
+                                    <button onClick={() => setShowRuleForm(true)} className="mt-3 text-sm text-accent font-semibold hover:underline">
                                         Create your first rule
                                     </button>
                                 </div>
@@ -763,25 +764,25 @@ export default function AIProcessing() {
                                         <div key={rule.id}>
                                             {editingRule?.id === rule.id ? (
                                                 /* Edit inline */
-                                                <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 space-y-3 animate-in fade-in duration-200">
+                                                <div className="bg-accent-light/50 border border-accent-light rounded-xl p-4 space-y-3 animate-in fade-in duration-200">
                                                     <input
                                                         type="text"
                                                         value={editRuleName}
                                                         onChange={(e) => setEditRuleName(e.target.value)}
-                                                        className="w-full text-sm px-3 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-1 focus:ring-indigo-200 font-medium"
+                                                        className="w-full text-sm px-3 py-2 bg-white border border-accent-ring rounded-lg outline-none focus:ring-1 focus:ring-accent-ring font-medium"
                                                         autoFocus
                                                     />
                                                     <textarea
                                                         rows={3}
                                                         value={editRuleText}
                                                         onChange={(e) => setEditRuleText(e.target.value)}
-                                                        className="w-full text-sm px-3 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-1 focus:ring-indigo-200 resize-none"
+                                                        className="w-full text-sm px-3 py-2 bg-white border border-accent-ring rounded-lg outline-none focus:ring-1 focus:ring-accent-ring resize-none"
                                                     />
                                                     <div className="flex justify-end gap-2">
                                                         <button onClick={cancelEditRule} className="px-3 py-1.5 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all">
                                                             Cancel
                                                         </button>
-                                                        <button onClick={saveEditRule} className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all">
+                                                        <button onClick={saveEditRule} className="px-3 py-1.5 text-xs font-semibold text-white bg-accent rounded-lg hover:bg-accent-hover transition-all">
                                                             Save
                                                         </button>
                                                     </div>
@@ -796,7 +797,7 @@ export default function AIProcessing() {
                                                                     <Zap size={13} fill="currentColor" />
                                                                 </div>
                                                                 <h4 className="text-sm font-bold text-slate-800 truncate">{rule.name}</h4>
-                                                                <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                                                <span className="px-1.5 py-0.5 rounded-md bg-accent-light text-accent text-[10px] font-bold uppercase tracking-wider shrink-0">
                                                                     AI
                                                                 </span>
                                                             </div>
@@ -809,7 +810,7 @@ export default function AIProcessing() {
                                                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                                             <button
                                                                 onClick={() => startEditRule(rule)}
-                                                                className="p-1.5 text-slate-300 hover:text-indigo-500 rounded-lg transition-colors"
+                                                                className="p-1.5 text-slate-300 hover:text-accent rounded-lg transition-colors"
                                                             >
                                                                 <Pencil size={14} />
                                                             </button>
@@ -837,7 +838,7 @@ export default function AIProcessing() {
             {/* ═══ Reprocess Modal ═══════════════════════════════════════ */}
             {showReprocessModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
+                    <div className="bg-surface-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
                         {/* Header */}
                         <div className="px-6 py-5 border-b border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900">Reprocess Raw Files</h3>
@@ -850,7 +851,7 @@ export default function AIProcessing() {
                         <div className="flex-1 overflow-y-auto px-6 py-4">
                             {loadingFiles ? (
                                 <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="animate-spin text-indigo-500" size={24} />
+                                    <Loader2 className="animate-spin text-accent" size={24} />
                                 </div>
                             ) : uploadedFiles.length === 0 ? (
                                 <p className="text-center text-sm text-slate-400 py-12">No uploaded files found.</p>
@@ -861,7 +862,7 @@ export default function AIProcessing() {
                                             <th className="py-2.5 pr-3 w-10">
                                                 <input
                                                     type="checkbox"
-                                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                    className="w-4 h-4 rounded border-slate-300 text-accent focus:ring-accent-ring cursor-pointer"
                                                     checked={selectedFileIds.size === uploadedFiles.length && uploadedFiles.length > 0}
                                                     onChange={toggleSelectAll}
                                                 />
@@ -876,13 +877,13 @@ export default function AIProcessing() {
                                         {uploadedFiles.map((file) => (
                                             <tr
                                                 key={file.file_id}
-                                                className={`hover:bg-slate-50/60 transition-colors cursor-pointer ${selectedFileIds.has(file.file_id) ? 'bg-indigo-50/30' : ''}`}
+                                                className={`hover:bg-slate-50/60 transition-colors cursor-pointer ${selectedFileIds.has(file.file_id) ? 'bg-accent-light/30' : ''}`}
                                                 onClick={() => toggleFileSelection(file.file_id)}
                                             >
                                                 <td className="py-3 pr-3">
                                                     <input
                                                         type="checkbox"
-                                                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                        className="w-4 h-4 rounded border-slate-300 text-accent focus:ring-accent-ring cursor-pointer"
                                                         checked={selectedFileIds.has(file.file_id)}
                                                         onChange={() => toggleFileSelection(file.file_id)}
                                                         onClick={(e) => e.stopPropagation()}
@@ -929,7 +930,7 @@ export default function AIProcessing() {
                                 <button
                                     onClick={handleReprocessSelected}
                                     disabled={selectedFileIds.size === 0 || isReprocessing}
-                                    className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm shadow-indigo-200"
+                                    className="px-5 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm shadow-accent-shadow"
                                 >
                                     {isReprocessing ? (
                                         <>
@@ -949,7 +950,7 @@ export default function AIProcessing() {
             {/* ═══ Rules Help Modal ════════════════════════════════════ */}
             {showRulesHelp && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowRulesHelp(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                    <div className="bg-surface-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                         {/* Header */}
                         <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between">
                             <div className="flex items-center gap-2.5">
@@ -981,7 +982,7 @@ export default function AIProcessing() {
                                         },
                                         {
                                             label: 'Change category',
-                                            color: 'bg-indigo-50 text-indigo-600',
+                                            color: 'bg-accent-light text-accent',
                                             example: '"Categorize all Uber and Lyft transactions as Transportation"',
                                         },
                                         {
@@ -1014,8 +1015,8 @@ export default function AIProcessing() {
                             </div>
 
                             {/* Tips */}
-                            <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4">
-                                <div className="flex items-center gap-1.5 text-indigo-600 mb-2">
+                            <div className="bg-accent-light/60 border border-accent-light rounded-xl p-4">
+                                <div className="flex items-center gap-1.5 text-accent mb-2">
                                     <Info size={13} />
                                     <span className="text-xs font-bold">Tips</span>
                                 </div>

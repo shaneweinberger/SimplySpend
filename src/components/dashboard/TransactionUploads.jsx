@@ -134,7 +134,7 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                 {status.message && (
                     <div className={`px-3 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm ${status.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
                             status.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                                'bg-indigo-50 border-indigo-100 text-indigo-700'
+                                'bg-accent-light border-accent-light text-accent-light-text'
                         }`}>
                         {status.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                         <p className="font-medium">{status.message}</p>
@@ -143,18 +143,18 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
 
                 {/* Dropzone */}
                 <label className="block cursor-pointer group">
-                    <div className={`flex flex-col items-center justify-center border border-dashed rounded-lg py-8 transition-all ${pendingFile ? 'bg-indigo-50/40 border-indigo-200' : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50/50'
+                    <div className={`flex flex-col items-center justify-center border border-dashed rounded-lg py-8 transition-all ${pendingFile ? 'bg-accent-light/40 border-accent-ring' : 'border-slate-200 hover:border-accent-ring hover:bg-slate-50/50'
                         }`}>
                         {pendingFile ? (
                             <>
-                                <FileText size={22} className="text-indigo-400 mb-1.5" />
-                                <span className="text-sm font-medium text-indigo-700">{pendingFile.name}</span>
-                                <span className="text-xs text-indigo-400 mt-0.5">{(pendingFile.size / 1024).toFixed(1)} KB</span>
+                                <FileText size={22} className="text-accent mb-1.5" />
+                                <span className="text-sm font-medium text-accent-light-text">{pendingFile.name}</span>
+                                <span className="text-xs text-accent mt-0.5">{(pendingFile.size / 1024).toFixed(1)} KB</span>
                             </>
                         ) : (
                             <>
-                                <UploadCloud size={22} className="text-slate-300 mb-1.5 group-hover:text-indigo-300 transition-colors" />
-                                <span className="text-sm text-slate-500">Drop a CSV file here, or <span className="text-indigo-500 font-medium">browse</span></span>
+                                <UploadCloud size={22} className="text-slate-300 mb-1.5 group-hover:text-accent-border transition-colors" />
+                                <span className="text-sm text-slate-500">Drop a CSV file here, or <span className="text-accent font-medium">browse</span></span>
                             </>
                         )}
                         <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileSelect} disabled={processing} />
@@ -169,7 +169,7 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                             <button key={i}
                                 onClick={() => { setSelectedAccount(account); setIsAddingNewAccount(false); setNewAccountName(''); }}
                                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${selectedAccount === account && !isAddingNewAccount
-                                        ? 'bg-indigo-600 text-white border-indigo-600'
+                                        ? 'bg-accent text-white border-accent'
                                         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                     }`}
                             >{account}</button>
@@ -180,23 +180,23 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                                     onChange={(e) => setNewAccountName(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddAccount(); }}
                                     placeholder="Account name"
-                                    className="pl-3 pr-14 py-1 text-xs rounded-full border-2 border-indigo-400 outline-none"
+                                    className="pl-3 pr-14 py-1 text-xs rounded-full border-2 border-accent-border outline-none"
                                     autoFocus
                                 />
                                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
-                                    <button onClick={handleAddAccount} className="p-1 text-indigo-600"><CheckCircle2 size={12} className="stroke-[3]" /></button>
+                                    <button onClick={handleAddAccount} className="p-1 text-accent"><CheckCircle2 size={12} className="stroke-[3]" /></button>
                                     <button onClick={() => { setIsAddingNewAccount(false); setNewAccountName(''); }} className="p-1 text-slate-400"><X size={12} className="stroke-[3]" /></button>
                                 </div>
                             </div>
                         ) : (
                             <button onClick={() => { setIsAddingNewAccount(true); setSelectedAccount(''); }}
-                                className="w-5 h-5 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-indigo-300 hover:text-indigo-400 flex items-center justify-center transition-all"
+                                className="w-5 h-5 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-accent-border hover:text-accent flex items-center justify-center transition-all"
                             ><Plus size={11} /></button>
                         )}
                     </div>
                     <button onClick={handleRunAiProcessing}
                         disabled={!pendingFile || !selectedAccount || isAddingNewAccount || processing}
-                        className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-indigo-100"
+                        className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg text-sm font-semibold hover:bg-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-accent-shadow"
                     >
                         {processing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                         {processing ? 'Processing…' : 'Run AI Processing'}
@@ -212,7 +212,7 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
         <div className="max-w-5xl mx-auto py-8 px-4">
             <div className="mb-8">
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                    <UploadCloud className="text-indigo-600" size={32} />
+                    <UploadCloud className="text-accent" size={32} />
                     Transaction Ingestion
                 </h1>
                 <p className="text-slate-500 mt-1">Upload your raw CSV data to the Bronze layer for AI processing.</p>
@@ -221,7 +221,7 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
             {status.message && (
                 <div className={`mb-6 p-4 rounded-xl border flex items-center gap-3 ${status.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
                         status.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' :
-                            'bg-indigo-50 border-indigo-200 text-indigo-800'
+                            'bg-accent-light border-accent-ring text-accent-light-text'
                     }`}>
                     {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
                     <p className="font-medium">{status.message}</p>
@@ -232,12 +232,12 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                 <div>
                     <h3 className="text-base font-semibold text-slate-800 mb-3">1. Upload CSV</h3>
                     <label className="block w-full cursor-pointer group">
-                        <div className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 transition-all ${pendingFile ? 'bg-indigo-50/50 border-indigo-300' : 'bg-slate-50 border-slate-200 hover:border-indigo-400 hover:bg-white'
+                        <div className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 transition-all ${pendingFile ? 'bg-accent-light/50 border-accent-border' : 'bg-slate-50 border-slate-200 hover:border-accent-border hover:bg-white'
                             }`}>
                             {pendingFile ? (
-                                <><FileText size={36} className="text-indigo-500 mb-2" /><span className="text-sm font-semibold text-indigo-700">{pendingFile.name}</span></>
+                                <><FileText size={36} className="text-accent mb-2" /><span className="text-sm font-semibold text-accent-light-text">{pendingFile.name}</span></>
                             ) : (
-                                <><UploadCloud size={36} className="text-slate-400 mb-2 group-hover:text-indigo-500" /><span className="text-sm text-slate-600">Click or drag & drop</span></>
+                                <><UploadCloud size={36} className="text-slate-400 mb-2 group-hover:text-accent" /><span className="text-sm text-slate-600">Click or drag & drop</span></>
                             )}
                             <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileSelect} disabled={processing} />
                         </div>
@@ -248,7 +248,7 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                     <div className="flex flex-wrap gap-2">
                         {savedAccounts.map((a, i) => (
                             <button key={i} onClick={() => { setSelectedAccount(a); setIsAddingNewAccount(false); }}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${selectedAccount === a && !isAddingNewAccount ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400'
+                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${selectedAccount === a && !isAddingNewAccount ? 'bg-accent text-white border-accent' : 'bg-white text-slate-700 border-slate-300 hover:border-accent-border'
                                     }`}>{a}</button>
                         ))}
                         {isAddingNewAccount ? (
@@ -256,22 +256,22 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                                 <input type="text" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddAccount(); }}
                                     placeholder="e.g. TD Credit Card"
-                                    className="pl-4 pr-20 py-2 rounded-full text-sm border-2 border-indigo-500 outline-none" autoFocus />
+                                    className="pl-4 pr-20 py-2 rounded-full text-sm border-2 border-accent outline-none" autoFocus />
                                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
-                                    <button onClick={handleAddAccount} className="p-1.5 bg-indigo-100 text-indigo-700 rounded-full"><CheckCircle2 size={14} /></button>
+                                    <button onClick={handleAddAccount} className="p-1.5 bg-accent-medium text-accent-light-text rounded-full"><CheckCircle2 size={14} /></button>
                                     <button onClick={() => { setIsAddingNewAccount(false); setNewAccountName(''); }} className="p-1.5 text-slate-400 rounded-full"><X size={14} /></button>
                                 </div>
                             </div>
                         ) : (
                             <button onClick={() => { setIsAddingNewAccount(true); setSelectedAccount(''); }}
-                                className="w-9 h-9 rounded-full border-2 border-dashed border-slate-300 text-slate-400 hover:border-indigo-400 flex items-center justify-center"><Plus size={18} /></button>
+                                className="w-9 h-9 rounded-full border-2 border-dashed border-slate-300 text-slate-400 hover:border-accent-border flex items-center justify-center"><Plus size={18} /></button>
                         )}
                     </div>
                 </div>
                 <div className="pt-4 border-t border-slate-100 flex justify-end">
                     <button onClick={handleRunAiProcessing}
                         disabled={!pendingFile || !selectedAccount || isAddingNewAccount || processing}
-                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-indigo-200">
+                        className="flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-xl font-semibold hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-accent-shadow">
                         {processing ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                         {processing ? 'Processing…' : 'Run AI Processing'}
                     </button>

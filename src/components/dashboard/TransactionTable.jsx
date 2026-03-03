@@ -89,7 +89,7 @@ export default function TransactionTable({
 
     const SortIndicator = ({ columnKey }) => {
         if (sortConfig.key !== columnKey) return <ChevronsUpDown size={14} className="opacity-30" />;
-        return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-indigo-600" /> : <ChevronDown size={14} className="text-indigo-600" />;
+        return sortConfig.direction === 'asc' ? <ChevronUp size={14} className="text-accent" /> : <ChevronDown size={14} className="text-accent" />;
     };
 
     const isAllSelected = displayTransactions.length > 0 && displayTransactions.every(tx => selectedIds.has(tx.id));
@@ -104,7 +104,7 @@ export default function TransactionTable({
                             <div className="flex items-center">
                                 <input
                                     type="checkbox"
-                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                    className="w-4 h-4 rounded border-slate-300 text-accent focus:ring-accent-ring transition-all cursor-pointer"
                                     checked={isAllSelected}
                                     ref={el => el && (el.indeterminate = isSomeSelected)}
                                     onChange={() => onSelectAll(displayTransactions.map(tx => tx.id))}
@@ -125,7 +125,7 @@ export default function TransactionTable({
                                         e.stopPropagation();
                                         onToggleDateFormat?.();
                                     }}
-                                    className="date-toggle p-1 rounded-md hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-colors mr-1"
+                                    className="date-toggle p-1 rounded-md hover:bg-accent-light text-slate-400 hover:text-accent transition-colors mr-1"
                                     title="Toggle Date Format"
                                 >
                                     <Calendar size={14} />
@@ -179,13 +179,13 @@ export default function TransactionTable({
                     {displayTransactions.map((tx) => (
                         <tr
                             key={tx.id}
-                            className={`hover:bg-slate-50/50 transition-colors group ${selectedIds.has(tx.id) ? 'bg-indigo-50/30' : ''}`}
+                            className={`hover:bg-slate-50/50 transition-colors group ${selectedIds.has(tx.id) ? 'bg-accent-light/30' : ''}`}
                         >
                             <td className="px-6 py-4">
                                 <div className="flex items-center">
                                     <input
                                         type="checkbox"
-                                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                                        className="w-4 h-4 rounded border-slate-300 text-accent focus:ring-accent-ring transition-all cursor-pointer"
                                         checked={selectedIds.has(tx.id)}
                                         onChange={() => onSelectToggle(tx.id)}
                                     />
@@ -197,7 +197,7 @@ export default function TransactionTable({
                             <td className="px-6 py-4">
                                 {isEditingMode ? (
                                     <input
-                                        className="w-full bg-transparent p-0 border-b border-dashed border-slate-400 hover:border-indigo-400 focus:border-solid focus:border-indigo-600 outline-none text-sm font-medium text-slate-900 transition-colors"
+                                        className="w-full bg-transparent p-0 border-b border-dashed border-slate-400 hover:border-accent-border focus:border-solid focus:border-accent outline-none text-sm font-medium text-slate-900 transition-colors"
                                         value={editDrafts[tx.id]?.description ?? tx.description}
                                         onChange={(e) => onDraftChange(tx.id, 'description', e.target.value)}
                                         placeholder="Description..."
@@ -209,7 +209,7 @@ export default function TransactionTable({
                                 )}
                             </td>
                             <td className="px-6 py-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${tx.transaction_account?.toLowerCase()?.includes('credit') ? 'bg-indigo-50 text-indigo-700' :
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${tx.transaction_account?.toLowerCase()?.includes('credit') ? 'bg-accent-light text-accent-light-text' :
                                     tx.transaction_account?.toLowerCase()?.includes('debit') ? 'bg-amber-50 text-amber-700' :
                                         'bg-slate-50 text-slate-700'
                                     }`}>
@@ -219,7 +219,7 @@ export default function TransactionTable({
                             <td className="px-6 py-4">
                                 {isEditingMode ? (
                                     <select
-                                        className="appearance-none inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 focus:bg-white border border-transparent focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer transition-all"
+                                        className="appearance-none inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 focus:bg-white border border-transparent focus:border-accent-border focus:ring-2 focus:ring-accent-ring outline-none cursor-pointer transition-all"
                                         value={editDrafts[tx.id]?.category ?? (tx.category || '')}
                                         onChange={(e) => onDraftChange(tx.id, 'category', e.target.value)}
                                     >

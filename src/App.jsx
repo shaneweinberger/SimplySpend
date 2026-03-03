@@ -8,22 +8,25 @@ import Overview from './components/dashboard/Overview';
 import Analysis from './components/dashboard/Analysis';
 import Processing from './components/dashboard/Processing';
 import AIProcessing from './components/dashboard/AIProcessing';
+import ThemeProvider from './components/ThemeProvider';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/under-construction" element={<UnderConstruction />} />
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<Overview />} />
-          <Route path="analysis" element={<Analysis />} />
-          <Route path="processing" element={<Processing />} />
-          <Route path="ai-processing" element={<AIProcessing />} />
-        </Route>
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/under-construction" element={<UnderConstruction />} />
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Overview />} />
+            <Route path="analysis" element={<Analysis />} />
+            <Route path="processing" element={<Processing />} />
+            <Route path="ai-processing" element={<AIProcessing />} />
+          </Route>
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

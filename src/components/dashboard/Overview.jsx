@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { CATEGORY_COLORS } from '../../lib/categoryColors';
+import { theme } from '../../theme';
 import {
     TrendingUp,
     LayoutDashboard,
@@ -26,7 +27,7 @@ import {
 
 // ─── Insight card ──────────────────────────────────────────────────────────────
 const InsightCard = ({ title, primaryMsg, subMsg, icon, colorClass, bgClass }) => (
-    <div className={`p-4 rounded-xl border border-slate-200/60 shadow-sm flex flex-col justify-center gap-1.5 ${bgClass || 'bg-white'}`}>
+    <div className={`p-4 rounded-xl border border-divider shadow-sm flex flex-col justify-center gap-1.5 ${bgClass || 'bg-surface-card'}`}>
         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             {icon}
             {title}
@@ -49,12 +50,12 @@ function makeHoverTooltip(lockedRef) {
         const total = item.payload?.total || 0;
         const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : '0.0';
         return (
-            <div className="bg-white/95 backdrop-blur-sm px-3 py-2.5 rounded-xl border border-slate-200 shadow-lg pointer-events-none min-w-[160px]">
+            <div className="bg-surface-card/95 backdrop-blur-sm px-3 py-2.5 rounded-xl border border-divider shadow-lg pointer-events-none min-w-[160px]">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{label}</p>
                 <p className="text-sm font-bold text-slate-800">{catName}</p>
                 <div className="flex items-center justify-between gap-4 mt-1">
                     <span className="text-xs text-slate-500">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    <span className="text-xs font-semibold text-indigo-600">{pct}%</span>
+                    <span className="text-xs font-semibold text-accent">{pct}%</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1.5">Click to see actions</p>
             </div>
@@ -381,7 +382,7 @@ export default function Overview() {
         return (
             <div className="flex items-center justify-center h-[60vh]">
                 <div className="flex flex-col items-center gap-3 text-slate-500">
-                    <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-8 w-8 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
@@ -412,7 +413,7 @@ export default function Overview() {
                                     key={range}
                                     onClick={() => setTimeRange(range)}
                                     className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 ${timeRange === range
-                                        ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5'
+                                        ? 'bg-white text-accent-light-text shadow-sm ring-1 ring-slate-900/5'
                                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                                 >
                                     {range}
@@ -426,10 +427,10 @@ export default function Overview() {
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Custom Dates</label>
                             <div className="flex items-center gap-2">
                                 <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)}
-                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-text" />
+                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block w-full p-2 outline-none cursor-text" />
                                 <span className="text-slate-400 text-sm font-medium">to</span>
                                 <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)}
-                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-text" />
+                                    className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block w-full p-2 outline-none cursor-text" />
                             </div>
                         </div>
                     )}
@@ -437,7 +438,7 @@ export default function Overview() {
                     <div className="flex flex-col gap-1.5 min-w-[140px]">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group By</label>
                         <select value={groupBy} onChange={e => setGroupBy(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block w-full p-2 outline-none cursor-pointer">
+                            className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block w-full p-2 outline-none cursor-pointer">
                             <option value="Daily">Daily</option>
                             <option value="Weekly">Weekly</option>
                             <option value="Monthly">Monthly</option>
@@ -449,7 +450,7 @@ export default function Overview() {
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <div className="relative flex items-center">
                             <input type="checkbox" className="sr-only" checked={focusCategory} onChange={() => setFocusCategory(!focusCategory)} />
-                            <div className={`block w-11 h-6 rounded-full transition-all duration-300 ease-in-out ${focusCategory ? 'bg-indigo-500 shadow-inner' : 'bg-slate-200 shadow-inner'}`} />
+                            <div className={`block w-11 h-6 rounded-full transition-all duration-300 ease-in-out ${focusCategory ? 'bg-accent shadow-inner' : 'bg-slate-200 shadow-inner'}`} />
                             <div className={`absolute left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ease-in-out shadow-sm ${focusCategory ? 'transform translate-x-5' : ''}`} />
                         </div>
                         <span className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">Focus on Category</span>
@@ -457,7 +458,7 @@ export default function Overview() {
 
                     {focusCategory && (
                         <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
-                            className="bg-indigo-50/50 border border-indigo-200 text-indigo-700 font-bold text-sm rounded-xl focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 block min-w-[160px] p-2 outline-none cursor-pointer animate-in fade-in slide-in-from-right-4 duration-300">
+                            className="bg-accent-light/50 border border-accent-ring text-accent-light-text font-bold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block min-w-[160px] p-2 outline-none cursor-pointer animate-in fade-in slide-in-from-right-4 duration-300">
                             {categoryNames.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                             <option value="Uncategorized">Uncategorized</option>
                         </select>
@@ -494,7 +495,7 @@ export default function Overview() {
 
             {/* ── Spending Trends Chart ────────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-8">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[450px]">
+                <div className="bg-surface-card p-6 rounded-2xl border border-divider shadow-sm flex flex-col min-h-[450px]">
 
                     {/* Chart header + draggable pill row */}
                     <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -513,7 +514,7 @@ export default function Overview() {
                                     <React.Fragment key={cat}>
                                         {/* Insertion line — shown BEFORE the drop target */}
                                         {dragIndex !== null && dragOverIndex === idx && dragIndex !== idx && (
-                                            <div className="w-0.5 h-6 bg-indigo-500 rounded-full shrink-0 animate-in fade-in duration-100" />
+                                            <div className="w-0.5 h-6 bg-accent rounded-full shrink-0 animate-in fade-in duration-100" />
                                         )}
                                         <div
                                             draggable
@@ -543,7 +544,7 @@ export default function Overview() {
                                     <div className="relative flex items-center group">
                                         <div className="absolute left-3 w-2.5 h-2.5 rounded-full bg-slate-300 z-10 pointer-events-none" />
                                         <select
-                                            className="appearance-none bg-white border border-dashed border-slate-300 text-slate-500 hover:text-indigo-600 hover:border-indigo-400 hover:bg-white font-bold text-xs rounded-full pl-7 pr-7 py-1.5 outline-none cursor-pointer transition-all shadow-sm"
+                                            className="appearance-none bg-white border border-dashed border-slate-300 text-slate-500 hover:text-accent hover:border-accent-border hover:bg-white font-bold text-xs rounded-full pl-7 pr-7 py-1.5 outline-none cursor-pointer transition-all shadow-sm"
                                             value=""
                                             onChange={e => { if (e.target.value) toggleCategoryVisibility(e.target.value); }}
                                         >
@@ -552,7 +553,7 @@ export default function Overview() {
                                                 <option key={c[0]} value={c[0]}>+ Add {c[0]}</option>
                                             ))}
                                         </select>
-                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 group-hover:text-indigo-500">
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 group-hover:text-accent">
                                             <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
                                         </div>
                                     </div>
@@ -567,10 +568,10 @@ export default function Overview() {
                             <ResponsiveContainer width="100%" height="100%">
                                 {focusCategory ? (
                                     <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
-                                        <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 4 }} content={<HoverTooltip />} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.chart.gridline} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
+                                        <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 4 }} content={<HoverTooltip />} />
                                         <Bar
                                             dataKey={selectedCategory}
                                             fill={getColorForCategory(selectedCategory)}
@@ -585,10 +586,10 @@ export default function Overview() {
                                     </BarChart>
                                 ) : (
                                     <BarChart data={presentationChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
-                                        <RechartsTooltip shared={false} cursor={{ fill: '#f8fafc', radius: 6 }} content={<HoverTooltip />} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.chart.gridline} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
+                                        <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 6 }} content={<HoverTooltip />} />
                                         {activeVisibleCategories.map((cat, index) => {
                                             // last user-category bar = topmost when no remaining
                                             const isTop = remainingCount === 0 && index === activeVisibleCategories.length - 1;
@@ -604,7 +605,7 @@ export default function Overview() {
                                         {/* Always rendered LAST → permanently at top of stack. Never conditionally unmounted. */}
                                         <Bar key="remaining" dataKey="remaining"
                                             name={`Remaining ${remainingCount} categor${remainingCount === 1 ? 'y' : 'ies'}`}
-                                            stackId="a" fill="#cbd5e1"
+                                            stackId="a" fill={theme.chart.remaining}
                                             className={remainingCount > 0 ? 'cursor-pointer' : ''}
                                             radius={remainingCount > 0 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                                             onClick={remainingCount > 0 ? (data, idx, e) => handleBarClick('Remaining', data, e) : undefined}
@@ -635,7 +636,7 @@ export default function Overview() {
                                 }}
                                 onClick={e => e.stopPropagation()}
                             >
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/60 w-52 overflow-hidden animate-in zoom-in-95 fade-in duration-150">
+                                <div className="bg-surface-card rounded-2xl border border-divider shadow-xl shadow-slate-200/60 w-52 overflow-hidden animate-in zoom-in-95 fade-in duration-150">
                                     {/* Header */}
                                     <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
@@ -668,7 +669,7 @@ export default function Overview() {
                                                     </div>
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-xs text-slate-500">% of total</span>
-                                                        <span className="text-xs font-bold text-indigo-600">{pct}%</span>
+                                                        <span className="text-xs font-bold text-accent">{pct}%</span>
                                                     </div>
                                                 </>
                                             );
@@ -678,14 +679,14 @@ export default function Overview() {
                                     <div className="px-2 pb-2 space-y-0.5">
                                         {lockedTooltip.category !== 'Remaining' && !focusCategory && (
                                             <button
-                                                className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
+                                                className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-accent-light hover:text-accent-light-text rounded-xl transition-colors flex items-center gap-2"
                                                 onClick={() => {
                                                     setFocusCategory(true);
                                                     setSelectedCategory(lockedTooltip.category);
                                                     setLockedTooltip(null);
                                                 }}
                                             >
-                                                <Tag size={13} className="text-indigo-400" />
+                                                <Tag size={13} className="text-accent" />
                                                 Focus on Category
                                             </button>
                                         )}
@@ -717,10 +718,10 @@ export default function Overview() {
             </div>
 
             {/* ── Pro Tip ──────────────────────────────────────────────────── */}
-            <div className="bg-indigo-50/30 border border-indigo-100/50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
-                <Info className="text-indigo-400 shrink-0" size={18} />
-                <p className="text-indigo-900/60 text-xs font-medium">
-                    Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-indigo-700">Categories &amp; Rules</button> to customize how your transactions are sorted.
+            <div className="bg-accent-light/30 border border-accent-light/50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+                <Info className="text-accent shrink-0" size={18} />
+                <p className="text-accent-light-text/60 text-xs font-medium">
+                    Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-accent-light-text">Categories &amp; Rules</button> to customize how your transactions are sorted.
                 </p>
             </div>
         </div>
@@ -729,7 +730,7 @@ export default function Overview() {
 
 function StatCard({ title, value, icon, trend }) {
     return (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+        <div className="bg-surface-card p-6 rounded-2xl border border-divider shadow-sm transition-all hover:shadow-md">
             <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shadow-sm border border-slate-100">
                     {icon}

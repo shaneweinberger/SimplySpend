@@ -25,6 +25,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { CATEGORY_COLORS } from '../../lib/categoryColors';
+import { theme } from '../../theme';
 
 export default function Analysis() {
     const location = useLocation();
@@ -549,7 +550,7 @@ export default function Analysis() {
                                 key={type.id}
                                 onClick={() => setFilterType(type.id)}
                                 className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${filterType === type.id
-                                    ? 'bg-white text-indigo-600 shadow-sm'
+                                    ? 'bg-white text-accent shadow-sm'
                                     : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
@@ -618,7 +619,7 @@ export default function Analysis() {
 
                         {filterType === 'all' && (
                             <div className="flex items-center gap-2 px-4 py-1">
-                                <Filter size={16} className="text-indigo-500" />
+                                <Filter size={16} className="text-accent" />
                                 <span className="text-sm font-semibold text-slate-600">All Transactions</span>
                             </div>
                         )}
@@ -630,7 +631,7 @@ export default function Analysis() {
             {!loading && categoryStats.data.length > 0 && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
                     {/* Category Spend Card */}
-                    <div className="xl:col-span-12 bg-white rounded-2xl border border-slate-200 shadow-sm relative z-20 overflow-hidden">
+                    <div className="xl:col-span-12 bg-surface-card rounded-2xl border border-divider shadow-sm relative z-20 overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                             <h3 className="text-base font-bold text-slate-900">Category Breakdown</h3>
                             <p className="text-xs text-slate-500 mt-0.5">Total: ${categoryStats.totalSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -656,7 +657,7 @@ export default function Analysis() {
                                                     <tr
                                                         key={row.category}
                                                         onClick={() => handleCategoryClick(row.category)}
-                                                        className={`transition-all bg-white cursor-pointer ${isSelected ? 'bg-indigo-50/50' : isDimmed ? 'opacity-30 grayscale-[0.5]' : 'hover:bg-slate-50/50'
+                                                        className={`transition-all bg-white cursor-pointer ${isSelected ? 'bg-accent-light/50' : isDimmed ? 'opacity-30 grayscale-[0.5]' : 'hover:bg-slate-50/50'
                                                             }`}
                                                     >
                                                         <td className="px-5 py-3 text-sm font-semibold text-slate-700">
@@ -759,11 +760,11 @@ export default function Analysis() {
             )}
 
             {/* Main Content */}
-            <div className={`bg-white rounded-2xl flex flex-col relative z-20 transition-all duration-300 ${isEditingMode ? 'border border-indigo-400 ring-4 ring-indigo-50 shadow-md' : 'border border-slate-200 shadow-sm'}`}>
+            <div className={`bg-surface-card rounded-2xl flex flex-col relative z-20 transition-all duration-300 ${isEditingMode ? 'border border-accent-border ring-4 ring-accent-light shadow-md' : 'border border-divider shadow-sm'}`}>
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-4">
                         <h3 className="text-lg font-bold text-slate-900">Filtered Transactions</h3>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent-light text-accent-light-text border border-accent-light">
                             {filteredTransactions.length} items
                         </span>
                     </div>
@@ -777,7 +778,7 @@ export default function Analysis() {
                                     setShowFilterMenu(!showFilterMenu);
                                 }}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold transition-all border ${showFilterMenu || advancedFilters.length > 0
-                                    ? 'bg-indigo-50 text-indigo-600 border-indigo-200 shadow-sm'
+                                    ? 'bg-accent-light text-accent border-accent-ring shadow-sm'
                                     : 'text-slate-600 hover:bg-slate-50 border-transparent'
                                     }`}
                             >
@@ -787,7 +788,7 @@ export default function Analysis() {
 
                             {showFilterMenu && (
                                 <div
-                                    className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 py-2 animate-in zoom-in-95 duration-200"
+                                    className="absolute top-full right-0 mt-2 w-56 bg-surface-card rounded-2xl border border-divider shadow-xl z-50 py-2 animate-in zoom-in-95 duration-200"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-1">
@@ -832,7 +833,7 @@ export default function Analysis() {
                                 <button
                                     onClick={handleBulkEditSave}
                                     disabled={isSavingEdits}
-                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl font-bold transition-all shadow-sm animate-in zoom-in-95 duration-200"
+                                    className="flex items-center gap-2 px-4 py-2 bg-accent text-white hover:bg-accent-hover rounded-xl font-bold transition-all shadow-sm animate-in zoom-in-95 duration-200"
                                 >
                                     {isSavingEdits ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                                     Save Changes {Object.keys(editDrafts).length > 0 ? `(${Object.keys(editDrafts).length})` : ''}
@@ -855,7 +856,7 @@ export default function Analysis() {
                             </button>
                         )}
 
-                        <button className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-xl border border-transparent hover:border-slate-200 transition-all shadow-none hover:shadow-sm">
+                        <button className="p-2 text-slate-500 hover:text-accent hover:bg-white rounded-xl border border-transparent hover:border-slate-200 transition-all shadow-none hover:shadow-sm">
                             <Download size={20} />
                         </button>
                     </div>
@@ -877,7 +878,7 @@ export default function Analysis() {
                                     <select
                                         value={filter.operator}
                                         onChange={(e) => updateFilter(filter.id, { operator: e.target.value })}
-                                        className="text-xs font-bold text-indigo-600 bg-transparent px-2 py-1.5 outline-none hover:bg-indigo-50/50 cursor-pointer appearance-none text-center"
+                                        className="text-xs font-bold text-accent bg-transparent px-2 py-1.5 outline-none hover:bg-accent-light/50 cursor-pointer appearance-none text-center"
                                         style={{ width: filter.operator.length * 7 + 20 }}
                                     >
                                         {filter.field === 'amount' ? (
@@ -923,7 +924,7 @@ export default function Analysis() {
 
                                                 {activeValuePopover === filter.id && (
                                                     <div
-                                                        className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl border border-slate-200 shadow-xl z-[60] py-2 animate-in zoom-in-95 duration-200 max-h-64 overflow-y-auto"
+                                                        className="absolute top-full left-0 mt-1 w-48 bg-surface-card rounded-xl border border-divider shadow-xl z-[60] py-2 animate-in zoom-in-95 duration-200 max-h-64 overflow-y-auto"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
                                                         {(filter.field === 'transaction_method' ? ['credit', 'debit'] : ['Uncategorized', ...categoryNames]).map(opt => {
@@ -936,7 +937,7 @@ export default function Analysis() {
                                                                     <div className="relative flex items-center justify-center">
                                                                         <input
                                                                             type="checkbox"
-                                                                            className="peer h-4 w-4 appearance-none rounded border border-slate-300 checked:border-indigo-600 checked:bg-indigo-600 transition-all cursor-pointer"
+                                                                            className="peer h-4 w-4 appearance-none rounded border border-slate-300 checked:border-accent checked:bg-accent transition-all cursor-pointer"
                                                                             checked={isSelected}
                                                                             onChange={(e) => {
                                                                                 e.stopPropagation();
@@ -993,7 +994,7 @@ export default function Analysis() {
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center p-20">
                         <div className="flex flex-col items-center gap-3">
-                            <Loader2 className="animate-spin text-indigo-600" size={40} />
+                            <Loader2 className="animate-spin text-accent" size={40} />
                             <p className="text-slate-500 font-medium">Loading transactions...</p>
                         </div>
                     </div>
@@ -1030,7 +1031,7 @@ export default function Analysis() {
                                             setItemsPerPage(val);
                                             setCurrentPage(1);
                                         }}
-                                        className="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+                                        className="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent-ring cursor-pointer"
                                     >
                                         <option value={25}>25</option>
                                         <option value={50}>50</option>
@@ -1054,14 +1055,14 @@ export default function Analysis() {
                                     <button
                                         onClick={() => setCurrentPage(1)}
                                         disabled={currentPage === 1}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                                        className="p-2 text-slate-400 hover:text-accent disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
                                     >
                                         <ChevronsLeft size={18} />
                                     </button>
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                         disabled={currentPage === 1}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                                        className="p-2 text-slate-400 hover:text-accent disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
                                     >
                                         <ChevronLeft size={18} />
                                     </button>
@@ -1075,14 +1076,14 @@ export default function Analysis() {
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredTransactions.length / itemsPerPage), prev + 1))}
                                         disabled={currentPage === Math.ceil(filteredTransactions.length / itemsPerPage)}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                                        className="p-2 text-slate-400 hover:text-accent disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
                                     >
                                         <ChevronRight size={18} />
                                     </button>
                                     <button
                                         onClick={() => setCurrentPage(Math.ceil(filteredTransactions.length / itemsPerPage))}
                                         disabled={currentPage === Math.ceil(filteredTransactions.length / itemsPerPage)}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                                        className="p-2 text-slate-400 hover:text-accent disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
                                     >
                                         <ChevronsRight size={18} />
                                     </button>

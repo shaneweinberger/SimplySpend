@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { theme } from '../../theme';
 import Papa from 'papaparse';
 import {
     UploadCloud,
@@ -218,8 +219,8 @@ export default function Processing() {
 
             {/* ── Page Header ──────────────────────────────────────────── */}
             <div className="mb-8">
-                <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Transaction Uploads</h1>
-                <p className="text-sm text-slate-400 mt-0.5">Upload CSV files and run AI categorization.</p>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Transaction Uploads</h1>
+                <p className="text-slate-500 mt-1">Upload CSV files and run AI categorization.</p>
             </div>
 
             {/* ── Two-column layout ─────────────────────────────────────── */}
@@ -234,7 +235,7 @@ export default function Processing() {
                             ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                             : status.type === 'error'
                                 ? 'bg-rose-50 border-rose-200 text-rose-700'
-                                : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                : 'bg-accent-light border-accent-ring text-accent-light-text'
                             }`}>
                             {status.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
                             {status.message}
@@ -247,7 +248,7 @@ export default function Processing() {
                     {/* Step 1 — Upload CSV */}
                     <div>
                         <div className="flex items-center gap-2.5 mb-3">
-                            <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+                            <span className="w-5 h-5 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
                             <h2 className="text-sm font-bold text-slate-800">Upload CSV</h2>
                         </div>
 
@@ -258,17 +259,17 @@ export default function Processing() {
                             onDrop={handleDrop}
                             onClick={() => !processing && fileInputRef.current?.click()}
                             className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none ${isDragging
-                                ? 'border-indigo-400 bg-indigo-50'
+                                ? 'border-accent-border bg-accent-light'
                                 : pendingFile
-                                    ? 'border-indigo-200 bg-indigo-50/40'
-                                    : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50/60'
+                                    ? 'border-accent-ring bg-accent-light/40'
+                                    : 'border-slate-200 hover:border-accent-border hover:bg-slate-50/60'
                                 } ${processing ? 'pointer-events-none opacity-60' : ''}`}
                         >
                             {pendingFile ? (
                                 <>
-                                    <FileText size={28} className="text-indigo-500 mb-2" />
-                                    <span className="text-sm font-semibold text-indigo-700">{pendingFile.name}</span>
-                                    <span className="text-xs text-indigo-400 mt-0.5">{(pendingFile.size / 1024).toFixed(1)} KB</span>
+                                    <FileText size={28} className="text-accent mb-2" />
+                                    <span className="text-sm font-semibold text-accent-light-text">{pendingFile.name}</span>
+                                    <span className="text-xs text-accent mt-0.5">{(pendingFile.size / 1024).toFixed(1)} KB</span>
                                     <button
                                         onClick={clearFile}
                                         className="absolute top-2.5 right-2.5 p-1 text-slate-300 hover:text-rose-400 transition-colors rounded-lg"
@@ -280,7 +281,7 @@ export default function Processing() {
                                 <>
                                     <UploadCloud size={28} className="text-slate-300 mb-2" />
                                     <span className="text-sm text-slate-500">
-                                        Drop a CSV here, or <span className="text-indigo-500 font-semibold">browse</span>
+                                        Drop a CSV here, or <span className="text-accent font-semibold">browse</span>
                                     </span>
                                     <span className="text-xs text-slate-400 mt-1">.csv files only</span>
                                 </>
@@ -307,7 +308,7 @@ export default function Processing() {
                     {/* Step 2 — Select Account */}
                     <div className={`transition-opacity duration-200 ${!pendingFile ? 'opacity-25 pointer-events-none' : ''}`}>
                         <div className="flex items-center gap-2.5 mb-3">
-                            <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${pendingFile ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-950'}`}>2</span>
+                            <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${pendingFile ? 'bg-accent text-white' : 'bg-slate-200 text-slate-950'}`}>2</span>
                             <h2 className="text-sm font-bold text-slate-800">Select Account</h2>
                         </div>
 
@@ -317,8 +318,8 @@ export default function Processing() {
                                     key={i}
                                     onClick={() => { setSelectedAccount(account); setIsAddingNewAccount(false); setNewAccountName(''); }}
                                     className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${selectedAccount === account && !isAddingNewAccount
-                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-100'
-                                        : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                                        ? 'bg-accent text-white border-accent shadow-sm shadow-accent-shadow'
+                                        : 'bg-white text-slate-600 border-slate-200 hover:border-accent-border'
                                         }`}
                                 >
                                     {account}
@@ -333,11 +334,11 @@ export default function Processing() {
                                         onChange={(e) => setNewAccountName(e.target.value)}
                                         onKeyDown={(e) => { if (e.key === 'Enter') handleAddAccount(); if (e.key === 'Escape') { setIsAddingNewAccount(false); setNewAccountName(''); } }}
                                         placeholder="e.g. TD Credit Card"
-                                        className="pl-3.5 pr-14 py-1.5 text-xs rounded-full border-2 border-indigo-400 outline-none focus:border-indigo-500"
+                                        className="pl-3.5 pr-14 py-1.5 text-xs rounded-full border-2 border-accent-border outline-none focus:border-accent"
                                         autoFocus
                                     />
                                     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
-                                        <button onClick={handleAddAccount} className="p-1 text-indigo-600 hover:text-indigo-800 transition-colors">
+                                        <button onClick={handleAddAccount} className="p-1 text-accent hover:text-accent-light-text transition-colors">
                                             <CheckCircle2 size={13} className="stroke-[2.5]" />
                                         </button>
                                         <button onClick={() => { setIsAddingNewAccount(false); setNewAccountName(''); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
@@ -348,7 +349,7 @@ export default function Processing() {
                             ) : (
                                 <button
                                     onClick={() => { setIsAddingNewAccount(true); setSelectedAccount(''); }}
-                                    className="w-7 h-7 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-indigo-400 hover:text-indigo-400 flex items-center justify-center transition-all"
+                                    className="w-7 h-7 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-accent-border hover:text-accent flex items-center justify-center transition-all"
                                     title="Add new account"
                                 >
                                     <Plus size={13} />
@@ -361,14 +362,14 @@ export default function Processing() {
                     <div>
                         <div className={`transition-opacity duration-200 ${!canRun ? 'opacity-25 pointer-events-none' : ''}`}>
                             <div className="flex items-center gap-2.5 mb-3">
-                                <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${canRun ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-950'}`}>3</span>
+                                <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${canRun ? 'bg-accent text-white' : 'bg-slate-200 text-slate-950'}`}>3</span>
                                 <h2 className="text-sm font-bold text-slate-800">Run AI Processing</h2>
                             </div>
 
                             <button
                                 onClick={handleRunAiProcessing}
                                 disabled={!canRun}
-                                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all"
+                                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover shadow-sm shadow-accent-shadow transition-all"
                             >
                                 {processing
                                     ? <><Loader2 size={16} className="animate-spin" /> Processing…</>
@@ -395,7 +396,7 @@ export default function Processing() {
                     {uploadHistory.length === 0 ? (
                         <p className="text-sm text-slate-400 py-4">No files uploaded yet.</p>
                     ) : (
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="bg-surface-card rounded-xl border border-divider shadow-sm overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-slate-100">

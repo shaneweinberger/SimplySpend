@@ -239,7 +239,7 @@ export default function Rules({ isNested = false }) {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
-                <Loader2 className="animate-spin text-indigo-600" size={40} />
+                <Loader2 className="animate-spin text-accent" size={40} />
             </div>
         );
     }
@@ -261,7 +261,7 @@ export default function Rules({ isNested = false }) {
                         </button>
                         <button
                             onClick={() => setShowForm(!showForm)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showForm ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showForm ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-accent text-white hover:bg-accent-hover'
                                 }`}
                         >
                             {showForm ? <X size={13} /> : <Plus size={13} />}
@@ -282,14 +282,14 @@ export default function Rules({ isNested = false }) {
                         <button
                             disabled={isProcessing}
                             onClick={() => setIsConfirming(true)}
-                            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg bg-accent text-white hover:bg-accent-hover shadow-accent-shadow disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
                         >
                             <Settings2 size={20} />
                             Reprocess All Transactions
                         </button>
                         <button
                             onClick={() => setShowForm(!showForm)}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${showForm ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${showForm ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-accent text-white hover:bg-accent-hover shadow-accent-shadow'}`}
                         >
                             {showForm ? <X size={20} /> : <Plus size={20} />}
                             {showForm ? 'Cancel' : 'Create New Rule'}
@@ -309,20 +309,20 @@ export default function Rules({ isNested = false }) {
             )}
 
             {showForm && (
-                <div className="bg-white p-8 rounded-2xl border-2 border-indigo-500 shadow-xl animate-in slide-in-from-top-4 duration-300">
+                <div className="bg-white p-8 rounded-2xl border-2 border-accent shadow-xl animate-in slide-in-from-top-4 duration-300">
                     <form onSubmit={addRule} className="space-y-6">
                         <div className="flex items-center gap-4 border-b border-slate-100 pb-4 mb-2">
                             <button
                                 type="button"
                                 onClick={() => setRuleType('structured')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${ruleType === 'structured' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${ruleType === 'structured' ? 'bg-accent-medium text-accent-light-text' : 'text-slate-500 hover:bg-slate-50'}`}
                             >
                                 Structured Rule
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setRuleType('nlp')}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${ruleType === 'nlp' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${ruleType === 'nlp' ? 'bg-accent-medium text-accent-light-text' : 'text-slate-500 hover:bg-slate-50'}`}
                             >
                                 Natural Language (AI)
                             </button>
@@ -333,7 +333,7 @@ export default function Rules({ isNested = false }) {
                                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Rule Name</label>
                                 <input
                                     required
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-100"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent-ring"
                                     placeholder="e.g. TD Visa Deletion, Grocery Cleanup"
                                     value={ruleName}
                                     onChange={(e) => setRuleName(e.target.value)}
@@ -345,12 +345,12 @@ export default function Rules({ isNested = false }) {
                             <>
                                 <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
                                     <div className="flex items-center gap-3 text-slate-900 font-bold mb-2">
-                                        <Settings2 size={18} className="text-indigo-600" />
+                                        <Settings2 size={18} className="text-accent" />
                                         If transaction satisfies:
                                     </div>
                                     <div className="grid md:grid-cols-3 gap-4">
                                         <select
-                                            className="bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100"
+                                            className="bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent-ring"
                                             value={condition.field}
                                             onChange={(e) => setCondition(prev => ({ ...prev, field: e.target.value }))}
                                         >
@@ -359,7 +359,7 @@ export default function Rules({ isNested = false }) {
                                             <option value="transaction_type">Type</option>
                                         </select>
                                         <select
-                                            className="bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100"
+                                            className="bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent-ring"
                                             value={condition.operator}
                                             onChange={(e) => setCondition(prev => ({ ...prev, operator: e.target.value }))}
                                         >
@@ -370,7 +370,7 @@ export default function Rules({ isNested = false }) {
                                         </select>
                                         <input
                                             required
-                                            className="bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-100"
+                                            className="bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent-ring"
                                             placeholder="Value..."
                                             value={condition.value}
                                             onChange={(e) => setCondition(prev => ({ ...prev, value: e.target.value }))}
@@ -379,21 +379,21 @@ export default function Rules({ isNested = false }) {
                                 </div>
 
                                 <div className="flex justify-center px-4">
-                                    <div className="bg-indigo-600 h-10 w-1 flex items-center justify-center relative">
-                                        <ArrowRight className="absolute text-indigo-600 bg-white rounded-full p-1 border-2 border-indigo-600" size={32} />
+                                    <div className="bg-accent h-10 w-1 flex items-center justify-center relative">
+                                        <ArrowRight className="absolute text-accent bg-white rounded-full p-1 border-2 border-accent" size={32} />
                                     </div>
                                 </div>
 
-                                <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 space-y-4">
-                                    <div className="flex items-center gap-3 text-indigo-900 font-bold mb-2">
+                                <div className="bg-accent-light p-6 rounded-xl border border-accent-light space-y-4">
+                                    <div className="flex items-center gap-3 text-accent-light-text font-bold mb-2">
                                         <Zap size={18} className="text-amber-500 fill-amber-500" />
                                         Then perform actions:
                                     </div>
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div className="space-y-1">
-                                            <label className="text-xs font-bold text-indigo-700">Assign Category</label>
+                                            <label className="text-xs font-bold text-accent-light-text">Assign Category</label>
                                             <select
-                                                className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-200"
+                                                className="w-full bg-white border border-accent-ring rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent-ring"
                                                 value={action.category}
                                                 onChange={(e) => setAction(prev => ({ ...prev, category: e.target.value }))}
                                             >
@@ -403,9 +403,9 @@ export default function Rules({ isNested = false }) {
                                             </select>
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-xs font-bold text-indigo-700">Override Description (Optional)</label>
+                                            <label className="text-xs font-bold text-accent-light-text">Override Description (Optional)</label>
                                             <input
-                                                className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-200"
+                                                className="w-full bg-white border border-accent-ring rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent-ring"
                                                 placeholder="New description..."
                                                 value={action.descriptionOverride}
                                                 onChange={(e) => setAction(prev => ({ ...prev, descriptionOverride: e.target.value }))}
@@ -415,20 +415,20 @@ export default function Rules({ isNested = false }) {
                                 </div>
                             </>
                         ) : (
-                            <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 space-y-4">
-                                <div className="flex items-center gap-3 text-indigo-900 font-bold mb-2">
-                                    <Settings2 size={18} className="text-indigo-600" />
+                            <div className="bg-accent-light p-6 rounded-xl border border-accent-light space-y-4">
+                                <div className="flex items-center gap-3 text-accent-light-text font-bold mb-2">
+                                    <Settings2 size={18} className="text-accent" />
                                     AI Instruction:
                                 </div>
                                 <textarea
                                     required
                                     rows={3}
-                                    className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-200 text-slate-700 placeholder:text-slate-400"
+                                    className="w-full bg-white border border-accent-ring rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-accent-ring text-slate-700 placeholder:text-slate-400"
                                     placeholder='e.g. "all transactions labeled TD Visa payment should be deleted"'
                                     value={ruleText}
                                     onChange={(e) => setRuleText(e.target.value)}
                                 />
-                                <div className="flex items-center gap-2 text-indigo-600/70 text-xs">
+                                <div className="flex items-center gap-2 text-accent/70 text-xs">
                                     <Info size={14} />
                                     <span>These rules are sent directly to Gemini as strict top-level processing instructions.</span>
                                 </div>
@@ -437,7 +437,7 @@ export default function Rules({ isNested = false }) {
 
                         <button
                             type="submit"
-                            className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all text-lg"
+                            className="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent-shadow hover:bg-accent-hover transition-all text-lg"
                         >
                             {editingRuleId ? 'Update Rule' : 'Save Rule'}
                         </button>
@@ -453,7 +453,7 @@ export default function Rules({ isNested = false }) {
                         <p className="text-slate-500 mt-2">Rules help Gemini process recurring transactions automatically.</p>
                         <button
                             onClick={() => setShowForm(true)}
-                            className="mt-6 text-indigo-600 font-bold hover:underline"
+                            className="mt-6 text-accent font-bold hover:underline"
                         >
                             Get started by creating your first rule
                         </button>
@@ -473,7 +473,7 @@ export default function Rules({ isNested = false }) {
                                             Priority {rule.priority}
                                         </span>
                                         {rule.rule_text && (
-                                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider">
+                                            <span className="px-2 py-0.5 rounded-md bg-accent-light text-accent text-[10px] font-bold uppercase tracking-wider">
                                                 AI Instruction
                                             </span>
                                         )}
@@ -481,16 +481,16 @@ export default function Rules({ isNested = false }) {
 
                                     <div className="flex flex-wrap items-center gap-4 text-sm">
                                         {rule.rule_text ? (
-                                            <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
-                                                <span className="text-indigo-400 font-medium italic">Instruct AI:</span>
-                                                <span className="font-medium text-indigo-800">"{rule.rule_text}"</span>
+                                            <div className="flex items-center gap-2 bg-accent-light px-3 py-1.5 rounded-lg border border-accent-light">
+                                                <span className="text-accent font-medium italic">Instruct AI:</span>
+                                                <span className="font-medium text-accent-light-text">"{rule.rule_text}"</span>
                                             </div>
                                         ) : (
                                             <>
                                                 <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
                                                     <span className="text-slate-400 font-medium">If</span>
                                                     <span className="font-bold text-slate-700 capitalize">{rule.conditions?.field}</span>
-                                                    <span className="text-indigo-500 italic">{rule.conditions?.operator?.replace('_', ' ')}</span>
+                                                    <span className="text-accent italic">{rule.conditions?.operator?.replace('_', ' ')}</span>
                                                     <span className="font-bold text-slate-700">"{rule.conditions?.value}"</span>
                                                 </div>
                                                 <ArrowRight size={16} className="text-slate-300" />
@@ -513,7 +513,7 @@ export default function Rules({ isNested = false }) {
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                     <button
                                         onClick={() => handleEditRule(rule)}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                        className="p-2 text-slate-400 hover:text-accent hover:bg-accent-light rounded-xl transition-all"
                                         title="Edit rule"
                                     >
                                         <Pencil size={18} />
@@ -561,7 +561,7 @@ export default function Rules({ isNested = false }) {
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={handleReprocess}
-                                className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                                className="w-full bg-accent text-white py-4 rounded-xl font-bold hover:bg-accent-hover transition-all shadow-lg shadow-accent-shadow"
                             >
                                 Yes, Confirm Reprocess All Transactions
                             </button>
@@ -580,12 +580,12 @@ export default function Rules({ isNested = false }) {
             {isProcessing && (
                 <div className="fixed inset-0 bg-white/80 backdrop-blur-md z-[10000] flex flex-col items-center justify-center p-4">
                     <div className="relative">
-                        <div className="w-24 h-24 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                        <div className="w-24 h-24 border-4 border-accent-light border-t-accent rounded-full animate-spin"></div>
                         <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-500 fill-amber-500" size={32} />
                     </div>
                     <h3 className="text-2xl font-bold text-slate-900 mt-8 mb-2">Reprocessing Transactions</h3>
                     <p className="text-slate-500 font-medium">Gemini is applying your updated rules...</p>
-                    <p className="text-xs text-indigo-400 mt-12 animate-pulse uppercase tracking-widest font-bold">Please do not close this window</p>
+                    <p className="text-xs text-accent mt-12 animate-pulse uppercase tracking-widest font-bold">Please do not close this window</p>
                 </div>
             )}
         </div>
