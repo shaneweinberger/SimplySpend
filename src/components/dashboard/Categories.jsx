@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Plus, X, Tags, Loader2, AlertCircle } from 'lucide-react';
+import { CATEGORY_COLORS } from '../../lib/categoryColors';
 
 export default function Categories({ isNested = false }) {
     const [categories, setCategories] = useState([]);
@@ -15,7 +16,31 @@ export default function Categories({ isNested = false }) {
         try {
             const { data, error } = await supabase.from('user_categories').select('*').order('name');
             if (error) throw error;
-            setCategories(data || []);
+            const fetched = data || [];
+
+            // ── One-time color backfill ───────────────────────────────────────
+            // Assign a palette color (by alphabetical index) to any category
+            // that doesn't already have one saved. Idempotent — safe to re-run.
+            const uncolored = fetched.filter(c => !c.color);
+            if (uncolored.length > 0) {
+                const updates = uncolored.map((cat, i) => {
+                    // Use the category's position in the full sorted list so
+                    // colors stay consistent even if only some are being patched.
+                    const globalIdx = fetched.findIndex(c => c.id === cat.id);
+                    return supabase
+                        .from('user_categories')
+                        .update({ color: CATEGORY_COLORS[globalIdx % CATEGORY_COLORS.length] })
+                        .eq('id', cat.id);
+                });
+                await Promise.all(updates);
+                // Re-fetch so local state reflects the saved colors
+                const { data: refreshed, error: rErr } = await supabase
+                    .from('user_categories').select('*').order('name');
+                if (rErr) throw rErr;
+                setCategories(refreshed || []);
+            } else {
+                setCategories(fetched);
+            }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -28,9 +53,11 @@ export default function Categories({ isNested = false }) {
         if (!newCategory.trim()) return;
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            // Pick the next color from the palette by cycling based on current count
+            const autoColor = CATEGORY_COLORS[categories.length % CATEGORY_COLORS.length];
             const { data, error } = await supabase
                 .from('user_categories')
-                .insert([{ name: newCategory.trim(), user_id: user.id }])
+                .insert([{ name: newCategory.trim(), user_id: user.id, color: autoColor }])
                 .select();
             if (error) throw error;
             setCategories(prev => [...prev, ...data].sort((a, b) => a.name.localeCompare(b.name)));

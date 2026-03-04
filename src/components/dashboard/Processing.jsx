@@ -134,6 +134,42 @@ export default function Processing() {
         }
     };
 
+    // ── Delete account ────────────────────────────────────────────────────────
+    const handleDeleteAccount = async (accountName) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            // Check if any bronze transactions reference this account
+            const { data: existing, error: checkError } = await supabase
+                .schema('bronze')
+                .from('transactions')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('transaction_account', accountName)
+                .limit(1);
+            if (checkError) throw checkError;
+
+            if (existing && existing.length > 0) {
+                setStatus({ type: 'error', message: `Cannot delete "${accountName}" — it has processed files associated with it.` });
+                return;
+            }
+
+            const { error } = await supabase
+                .from('user_accounts')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('account_name', accountName);
+            if (error) throw error;
+
+            setSavedAccounts(prev => prev.filter(a => a !== accountName));
+            if (selectedAccount === accountName) setSelectedAccount('');
+        } catch (err) {
+            console.error('Error deleting account:', err);
+            setStatus({ type: 'error', message: `Failed to delete account: ${err.message}` });
+        }
+    };
+
     // ── Run AI processing ─────────────────────────────────────────────────────
     const handleRunAiProcessing = async () => {
         if (!pendingFile || !selectedAccount) return;
@@ -223,242 +259,249 @@ export default function Processing() {
                 <p className="text-slate-500 mt-1">Upload CSV files and run AI categorization.</p>
             </div>
 
-            {/* ── Two-column layout ─────────────────────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            {/* ── Status banner ────────────────────────────────────────── */}
+            {status.message && (
+                <div className={`mb-6 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium ${status.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    : status.type === 'error'
+                        ? 'bg-rose-50 border-rose-200 text-rose-700'
+                        : 'bg-accent-light border-accent-ring text-accent-light-text'
+                    }`}>
+                    {status.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                    {status.message}
+                    <button onClick={() => setStatus({ type: '', message: '' })} className="ml-auto opacity-60 hover:opacity-100 transition-opacity">
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
 
-                {/* ── LEFT: Upload workflow ─────────────────────────────── */}
-                <div className="lg:col-span-5 space-y-8">
+            {/* ── Three-step row ─────────────────────────────────────────── */}
+            <div className="flex flex-col lg:flex-row items-start gap-6">
 
-                    {/* Status banner */}
-                    {status.message && (
-                        <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium ${status.type === 'success'
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                            : status.type === 'error'
-                                ? 'bg-rose-50 border-rose-200 text-rose-700'
-                                : 'bg-accent-light border-accent-ring text-accent-light-text'
-                            }`}>
-                            {status.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
-                            {status.message}
-                            <button onClick={() => setStatus({ type: '', message: '' })} className="ml-auto opacity-60 hover:opacity-100 transition-opacity">
-                                <X size={14} />
-                            </button>
-                        </div>
-                    )}
+                {/* Step 1 — Upload CSV */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <span className="w-5 h-5 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+                        <h2 className="text-sm font-bold text-slate-800">Upload CSV</h2>
+                    </div>
 
-                    {/* Step 1 — Upload CSV */}
-                    <div>
-                        <div className="flex items-center gap-2.5 mb-3">
-                            <span className="w-5 h-5 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
-                            <h2 className="text-sm font-bold text-slate-800">Upload CSV</h2>
-                        </div>
-
-                        {/* Dropzone */}
-                        <div
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            onClick={() => !processing && fileInputRef.current?.click()}
-                            className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none ${isDragging
-                                ? 'border-accent-border bg-accent-light'
-                                : pendingFile
-                                    ? 'border-accent-ring bg-accent-light/40'
-                                    : 'border-slate-200 hover:border-accent-border hover:bg-slate-50/60'
-                                } ${processing ? 'pointer-events-none opacity-60' : ''}`}
-                        >
-                            {pendingFile ? (
-                                <>
-                                    <FileText size={28} className="text-accent mb-2" />
-                                    <span className="text-sm font-semibold text-accent-light-text">{pendingFile.name}</span>
-                                    <span className="text-xs text-accent mt-0.5">{(pendingFile.size / 1024).toFixed(1)} KB</span>
-                                    <button
-                                        onClick={clearFile}
-                                        className="absolute top-2.5 right-2.5 p-1 text-slate-300 hover:text-rose-400 transition-colors rounded-lg"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <UploadCloud size={28} className="text-slate-300 mb-2" />
-                                    <span className="text-sm text-slate-500">
-                                        Drop a CSV here, or <span className="text-accent font-semibold">browse</span>
-                                    </span>
-                                    <span className="text-xs text-slate-400 mt-1">.csv files only</span>
-                                </>
-                            )}
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".csv"
-                                className="hidden"
-                                onChange={handleFileSelect}
-                                disabled={processing}
-                            />
-                        </div>
-
-                        {/* Non-CSV error */}
-                        {fileError && (
-                            <p className="mt-2 text-xs text-rose-500 flex items-center gap-1.5">
-                                <AlertCircle size={12} />
-                                {fileError}
-                            </p>
+                    {/* Dropzone */}
+                    <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => !processing && fileInputRef.current?.click()}
+                        className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-10 cursor-pointer transition-all select-none ${isDragging
+                            ? 'border-accent-border bg-accent-light'
+                            : pendingFile
+                                ? 'border-accent-ring bg-accent-light/40'
+                                : 'border-slate-200 hover:border-accent-border hover:bg-slate-50/60'
+                            } ${processing ? 'pointer-events-none opacity-60' : ''}`}
+                    >
+                        {pendingFile ? (
+                            <>
+                                <FileText size={28} className="text-accent mb-2" />
+                                <span className="text-sm font-semibold text-accent-light-text">{pendingFile.name}</span>
+                                <span className="text-xs text-accent mt-0.5">{(pendingFile.size / 1024).toFixed(1)} KB</span>
+                                <button
+                                    onClick={clearFile}
+                                    className="absolute top-2.5 right-2.5 p-1 text-slate-300 hover:text-rose-400 transition-colors rounded-lg"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <UploadCloud size={28} className="text-slate-300 mb-2" />
+                                <span className="text-sm text-slate-500">
+                                    Drop a CSV here, or <span className="text-accent font-semibold">browse</span>
+                                </span>
+                                <span className="text-xs text-slate-400 mt-1">.csv files only</span>
+                            </>
                         )}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv"
+                            className="hidden"
+                            onChange={handleFileSelect}
+                            disabled={processing}
+                        />
                     </div>
 
-                    {/* Step 2 — Select Account */}
-                    <div className={`transition-opacity duration-200 ${!pendingFile ? 'opacity-25 pointer-events-none' : ''}`}>
-                        <div className="flex items-center gap-2.5 mb-3">
-                            <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${pendingFile ? 'bg-accent text-white' : 'bg-slate-200 text-slate-950'}`}>2</span>
-                            <h2 className="text-sm font-bold text-slate-800">Select Account</h2>
-                        </div>
+                    {/* Non-CSV error */}
+                    {fileError && (
+                        <p className="mt-2 text-xs text-rose-500 flex items-center gap-1.5">
+                            <AlertCircle size={12} />
+                            {fileError}
+                        </p>
+                    )}
+                </div>
 
-                        <div className="flex flex-wrap gap-2 items-center">
-                            {savedAccounts.map((account, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => { setSelectedAccount(account); setIsAddingNewAccount(false); setNewAccountName(''); }}
-                                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${selectedAccount === account && !isAddingNewAccount
-                                        ? 'bg-accent text-white border-accent shadow-sm shadow-accent-shadow'
-                                        : 'bg-white text-slate-600 border-slate-200 hover:border-accent-border'
-                                        }`}
-                                >
-                                    {account}
-                                </button>
-                            ))}
-
-                            {isAddingNewAccount ? (
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={newAccountName}
-                                        onChange={(e) => setNewAccountName(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddAccount(); if (e.key === 'Escape') { setIsAddingNewAccount(false); setNewAccountName(''); } }}
-                                        placeholder="e.g. TD Credit Card"
-                                        className="pl-3.5 pr-14 py-1.5 text-xs rounded-full border-2 border-accent-border outline-none focus:border-accent"
-                                        autoFocus
-                                    />
-                                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
-                                        <button onClick={handleAddAccount} className="p-1 text-accent hover:text-accent-light-text transition-colors">
-                                            <CheckCircle2 size={13} className="stroke-[2.5]" />
-                                        </button>
-                                        <button onClick={() => { setIsAddingNewAccount(false); setNewAccountName(''); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-                                            <X size={13} className="stroke-[2.5]" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={() => { setIsAddingNewAccount(true); setSelectedAccount(''); }}
-                                    className="w-7 h-7 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-accent-border hover:text-accent flex items-center justify-center transition-all"
-                                    title="Add new account"
-                                >
-                                    <Plus size={13} />
-                                </button>
-                            )}
-                        </div>
+                {/* Step 2 — Select Account */}
+                <div className={`flex-1 min-w-0 transition-opacity duration-200 ${!pendingFile ? 'opacity-25 pointer-events-none' : ''}`}>
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${pendingFile ? 'bg-accent text-white' : 'bg-slate-200 text-slate-950'}`}>2</span>
+                        <h2 className="text-sm font-bold text-slate-800">Select Account</h2>
                     </div>
 
-                    {/* Step 3 — Run AI Processing */}
-                    <div>
-                        <div className={`transition-opacity duration-200 ${!canRun ? 'opacity-25 pointer-events-none' : ''}`}>
-                            <div className="flex items-center gap-2.5 mb-3">
-                                <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${canRun ? 'bg-accent text-white' : 'bg-slate-200 text-slate-950'}`}>3</span>
-                                <h2 className="text-sm font-bold text-slate-800">Run AI Processing</h2>
-                            </div>
-
-                            <button
-                                onClick={handleRunAiProcessing}
-                                disabled={!canRun}
-                                className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover shadow-sm shadow-accent-shadow transition-all"
+                    <div className="flex flex-wrap gap-2 items-center">
+                        {savedAccounts.map((account, i) => (
+                            <div
+                                key={i}
+                                className={`group/pill relative flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${selectedAccount === account && !isAddingNewAccount
+                                    ? 'bg-accent text-white border-accent shadow-sm shadow-accent-shadow'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-accent-border'
+                                    }`}
+                                onClick={() => { setSelectedAccount(account); setIsAddingNewAccount(false); setNewAccountName(''); }}
                             >
-                                {processing
-                                    ? <><Loader2 size={16} className="animate-spin" /> Processing…</>
-                                    : <><Sparkles size={16} /> Run AI Processing</>
-                                }
-                            </button>
-                        </div>
+                                {account}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteAccount(account); }}
+                                    className={`ml-0.5 opacity-0 group-hover/pill:opacity-100 transition-opacity rounded-full p-0.5 ${selectedAccount === account && !isAddingNewAccount
+                                        ? 'hover:bg-white/20 text-white/70 hover:text-white'
+                                        : 'hover:bg-slate-100 text-slate-400 hover:text-rose-500'
+                                        }`}
+                                    title={`Delete ${account}`}
+                                >
+                                    <X size={11} className="stroke-[3]" />
+                                </button>
+                            </div>
+                        ))}
 
-                        {!canRun && !processing && (
-                            <p className="text-center text-[10px] text-slate-400 mt-2">
-                                {!pendingFile && !selectedAccount
-                                    ? 'Upload a CSV and select an account to continue.'
-                                    : !pendingFile
-                                        ? 'Upload a CSV file to continue.'
-                                        : 'Select an account to continue.'}
-                            </p>
+                        {isAddingNewAccount ? (
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={newAccountName}
+                                    onChange={(e) => setNewAccountName(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddAccount(); if (e.key === 'Escape') { setIsAddingNewAccount(false); setNewAccountName(''); } }}
+                                    placeholder="e.g. TD Credit Card"
+                                    className="pl-3.5 pr-14 py-1.5 text-xs rounded-full border-2 border-accent-border outline-none focus:border-accent"
+                                    autoFocus
+                                />
+                                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
+                                    <button onClick={handleAddAccount} className="p-1 text-accent hover:text-accent-light-text transition-colors">
+                                        <CheckCircle2 size={13} className="stroke-[2.5]" />
+                                    </button>
+                                    <button onClick={() => { setIsAddingNewAccount(false); setNewAccountName(''); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                                        <X size={13} className="stroke-[2.5]" />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => { setIsAddingNewAccount(true); setSelectedAccount(''); }}
+                                className="w-7 h-7 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-accent-border hover:text-accent flex items-center justify-center transition-all"
+                                title="Add new account"
+                            >
+                                <Plus size={13} />
+                            </button>
                         )}
                     </div>
                 </div>
 
-                {/* ── RIGHT: Uploaded files table ───────────────────────── */}
-                <div className="lg:col-span-7">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Uploaded Files</p>
-                    {uploadHistory.length === 0 ? (
-                        <p className="text-sm text-slate-400 py-4">No files uploaded yet.</p>
-                    ) : (
-                        <div className="bg-surface-card rounded-xl border border-divider shadow-sm overflow-hidden">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="border-b border-slate-100">
-                                        <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">File</th>
-                                        <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Account</th>
-                                        <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Upload Date</th>
-                                        <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date Range</th>
-                                        <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                                        <th className="px-5 py-2.5 w-10" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {uploadHistory.map((file) => (
-                                        <tr key={file.file_id} className="group hover:bg-slate-50/60 transition-colors">
-                                            <td className="px-5 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <FileText size={13} className="text-slate-300 shrink-0" />
-                                                    <span className="text-sm text-slate-700 font-medium">{file.file_name || 'Unnamed'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{file.transaction_account}</span>
-                                            </td>
-                                            <td className="px-5 py-3 text-sm text-slate-400 whitespace-nowrap">
-                                                {new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </td>
-                                            <td className="px-5 py-3 text-sm text-slate-400 whitespace-nowrap">
-                                                {file.minDate && file.maxDate ? (
-                                                    file.minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ===
-                                                        file.maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                                        ? file.minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                                        : `${file.minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${file.maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                                                ) : (
-                                                    <span className="text-slate-300">—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${file.status === 'processed' ? 'text-emerald-600' :
-                                                    file.status === 'error' ? 'text-rose-500' : 'text-amber-500'
-                                                    }`}>
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${file.status === 'processed' ? 'bg-emerald-500' :
-                                                        file.status === 'error' ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'
-                                                        }`} />
-                                                    {file.status.charAt(0).toUpperCase() + file.status.slice(1)}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <button
-                                                    onClick={() => handleDeleteFile(file.file_id)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-rose-400 rounded transition-all"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                {/* Step 3 — Run AI Processing */}
+                <div className="flex-1 min-w-0">
+                    <div className={`transition-opacity duration-200 ${!canRun ? 'opacity-25 pointer-events-none' : ''}`}>
+                        <div className="flex items-center gap-2.5 mb-3">
+                            <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 transition-colors ${canRun ? 'bg-accent text-white' : 'bg-slate-200 text-slate-950'}`}>3</span>
+                            <h2 className="text-sm font-bold text-slate-800">Run AI Processing</h2>
                         </div>
+
+                        <button
+                            onClick={handleRunAiProcessing}
+                            disabled={!canRun}
+                            className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-bold bg-accent text-white hover:bg-accent-hover shadow-sm shadow-accent-shadow transition-all"
+                        >
+                            {processing
+                                ? <><Loader2 size={16} className="animate-spin" /> Processing…</>
+                                : <><Sparkles size={16} /> Run AI Processing</>
+                            }
+                        </button>
+                    </div>
+
+                    {!canRun && !processing && (
+                        <p className="text-center text-[10px] text-slate-400 mt-2">
+                            {!pendingFile && !selectedAccount
+                                ? 'Upload a CSV and select an account to continue.'
+                                : !pendingFile
+                                    ? 'Upload a CSV file to continue.'
+                                    : 'Select an account to continue.'}
+                        </p>
                     )}
                 </div>
             </div>
+
+            {/* ── Uploaded Files table (full-width below) ────────────── */}
+            <div className="mt-10">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Uploaded Files</p>
+                {uploadHistory.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-4">No files uploaded yet.</p>
+                ) : (
+                    <div className="bg-surface-card rounded-xl border border-divider shadow-sm overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-100">
+                                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">File</th>
+                                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Account</th>
+                                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Upload Date</th>
+                                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date Range</th>
+                                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                    <th className="px-5 py-2.5 w-10" />
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {uploadHistory.map((file) => (
+                                    <tr key={file.file_id} className="group hover:bg-slate-50/60 transition-colors">
+                                        <td className="px-5 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <FileText size={13} className="text-slate-300 shrink-0" />
+                                                <span className="text-sm text-slate-700 font-medium">{file.file_name || 'Unnamed'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-3">
+                                            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{file.transaction_account}</span>
+                                        </td>
+                                        <td className="px-5 py-3 text-sm text-slate-400 whitespace-nowrap">
+                                            {new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-5 py-3 text-sm text-slate-400 whitespace-nowrap">
+                                            {file.minDate && file.maxDate ? (
+                                                file.minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ===
+                                                    file.maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                                    ? file.minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                    : `${file.minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${file.maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                            ) : (
+                                                <span className="text-slate-300">—</span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-3">
+                                            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${file.status === 'processed' ? 'text-emerald-600' :
+                                                file.status === 'error' ? 'text-rose-500' : 'text-amber-500'
+                                                }`}>
+                                                <div className={`w-1.5 h-1.5 rounded-full ${file.status === 'processed' ? 'bg-emerald-500' :
+                                                    file.status === 'error' ? 'bg-rose-500' : 'bg-amber-400 animate-pulse'
+                                                    }`} />
+                                                {file.status.charAt(0).toUpperCase() + file.status.slice(1)}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3">
+                                            <button
+                                                onClick={() => handleDeleteFile(file.file_id)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-rose-400 rounded transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
         </div>
     );
 }

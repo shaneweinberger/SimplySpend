@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext, useLocation, useNavigate } from 'react-router-dom';
+import { useSessionState } from '../../hooks/useSessionState';
 import { supabase } from '../../lib/supabaseClient';
 import TransactionTable from './TransactionTable';
 import {
@@ -34,14 +35,29 @@ export default function Analysis() {
     // Date Range from context (Default fallback or initial)
     const { startDate: ctxStartDate, endDate: ctxEndDate } = useOutletContext();
 
-    // Current filter mode: 'all', 'week', 'month', 'range'
-    const [filterType, setFilterType] = useState(() => {
-        if (location.state && location.state.filterType) return location.state.filterType;
-        if (location.state && location.state.startDate) return 'range';
-        return 'month';
-    });
+    // ── View state — persisted across in-app navigation via sessionStorage ──────
+    // location.state (deep-link from Overview chart click) always takes priority.
+    const defaultMonth = (() => {
+        const now = new Date();
+        now.setHours(12, 0, 0, 0);
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    })();
 
-    // Local state for specific filters
+    const [filterType, setFilterType] = useSessionState('analysis.filterType', 'month');
+    const [selectedMonth, setSelectedMonth] = useSessionState('analysis.selectedMonth', defaultMonth);
+    const [selectedWeek, setSelectedWeek] = useSessionState('analysis.selectedWeek', '');
+
+    // Apply location.state overrides (deep-links from Overview) — runs once on mount
+    useEffect(() => {
+        if (!location.state) return;
+        if (location.state.filterType) setFilterType(location.state.filterType);
+        else if (location.state.startDate) setFilterType('range');
+        if (location.state.selectedMonth) setSelectedMonth(location.state.selectedMonth);
+        if (location.state.selectedWeek) setSelectedWeek(location.state.selectedWeek);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Local state for specific filters (range dates — not persisted, derive from context)
     const [localStartDate, setLocalStartDate] = useState(() => {
         if (location.state && location.state.startDate) return location.state.startDate;
         return ctxStartDate;
@@ -50,18 +66,6 @@ export default function Analysis() {
     const [localEndDate, setLocalEndDate] = useState(() => {
         if (location.state && location.state.endDate) return location.state.endDate;
         return ctxEndDate;
-    });
-
-    const [selectedWeek, setSelectedWeek] = useState(() => {
-        if (location.state && location.state.selectedWeek) return location.state.selectedWeek;
-        return '';
-    });
-
-    const [selectedMonth, setSelectedMonth] = useState(() => {
-        if (location.state && location.state.selectedMonth) return location.state.selectedMonth;
-        const now = new Date();
-        now.setHours(12, 0, 0, 0); // Anchor to midday
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
 
     // Table view state
@@ -634,7 +638,6 @@ export default function Analysis() {
                     <div className="xl:col-span-12 bg-surface-card rounded-2xl border border-divider shadow-sm relative z-20 overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                             <h3 className="text-base font-bold text-slate-900">Category Breakdown</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Total: ${categoryStats.totalSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-0">
                             <div className="md:col-span-8 border-r border-slate-100 bg-white pl-6 pb-6 pr-4">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { CATEGORY_COLORS } from '../../lib/categoryColors';
 import { theme } from '../../theme';
+import { useSessionState } from '../../hooks/useSessionState';
 import {
     TrendingUp,
     LayoutDashboard,
@@ -49,15 +50,23 @@ function makeHoverTooltip(lockedRef) {
         const amount = item.value || 0;
         const total = item.payload?.total || 0;
         const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : '0.0';
+        const ht = theme.trendsGraph.hoverTooltip;
         return (
-            <div className="bg-surface-card/95 backdrop-blur-sm px-3 py-2.5 rounded-xl border border-divider shadow-lg pointer-events-none min-w-[160px]">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{label}</p>
-                <p className="text-sm font-bold text-slate-800">{catName}</p>
+            <div
+                className="px-3 py-2.5 rounded-xl pointer-events-none min-w-[160px]"
+                style={{
+                    backgroundColor: ht.background,
+                    border: `1px solid ${ht.border}`,
+                    boxShadow: ht.shadow,
+                }}
+            >
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: ht.labelColor }}>{label}</p>
+                <p className="text-sm font-bold" style={{ color: ht.categoryColor }}>{catName}</p>
                 <div className="flex items-center justify-between gap-4 mt-1">
-                    <span className="text-xs text-slate-500">${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    <span className="text-xs font-semibold text-accent">{pct}%</span>
+                    <span className="text-xs" style={{ color: ht.amountColor }}>${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-xs font-semibold" style={{ color: ht.percentColor }}>{pct}%</span>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1.5">Click to see actions</p>
+                <p className="text-[10px] mt-1.5" style={{ color: ht.hintColor }}>Click to see actions</p>
             </div>
         );
     };
@@ -72,15 +81,16 @@ export default function Overview() {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Top-Level Controls
-    const [timeRange, setTimeRange] = useState('30D');
-    const [customStartDate, setCustomStartDate] = useState(() => {
+    // Top-Level Controls — persisted across in-app navigation via sessionStorage
+    const [timeRange, setTimeRange] = useSessionState('overview.timeRange', '30D');
+    const [customStartDate, setCustomStartDate] = useSessionState('overview.customStartDate', (() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
-    });
-    const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-    const [groupBy, setGroupBy] = useState('Weekly');
+    })());
+    const [customEndDate, setCustomEndDate] = useSessionState('overview.customEndDate', new Date().toISOString().split('T')[0]);
+    const [groupBy, setGroupBy] = useSessionState('overview.groupBy', 'Weekly');
+    // Ephemeral interaction state — intentionally NOT persisted
     const [focusCategory, setFocusCategory] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -403,7 +413,7 @@ export default function Overview() {
             </header>
 
             {/* ── Top-Level Controls ──────────────────────────────────────── */}
-            <div className="sticky top-0 z-30 flex flex-col md:flex-row gap-6 bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200 shadow-sm items-center">
+            <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-6 bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200 shadow-sm items-center">
                 <div className="flex flex-wrap items-center gap-6 w-full">
                     <div className="flex flex-col gap-1.5 flex-1 min-w-[320px]">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time Range</label>
