@@ -16,6 +16,7 @@ import {
     RefreshCw,
     HelpCircle
 } from 'lucide-react';
+import { useProcessing } from '../../lib/ProcessingContext';
 
 // ─── Default color palette for new categories ────────────────────────────────
 const DEFAULT_COLORS = [
@@ -101,6 +102,7 @@ export default function AIProcessing() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
+    const { startProcessing, stopProcessing, getAbortSignal } = useProcessing();
 
     // ── Baseline snapshots for dirty-state comparison ─────────────────────────
     // Stores the DB state at last load/reprocess so we can compute isDirty
@@ -460,6 +462,8 @@ export default function AIProcessing() {
         if (selectedFileIds.size === 0) return;
         setIsReprocessing(true);
         setError(null);
+        startProcessing(`Reprocessing ${selectedFileIds.size} file(s) with your updated categories and rules…`);
+        const abortSignal = getAbortSignal();
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -468,6 +472,7 @@ export default function AIProcessing() {
 
             // 1. Delete silver transactions for selected files
             for (const fileId of fileIds) {
+                if (abortSignal.cancelled) { setToast({ message: 'Processing cancelled.', type: 'error' }); return; }
                 const { error: silverError } = await supabase
                     .from('silver_transactions')
                     .delete()
@@ -478,6 +483,7 @@ export default function AIProcessing() {
 
             // 2. Reset bronze status to 'pending' for selected files
             for (const fileId of fileIds) {
+                if (abortSignal.cancelled) { setToast({ message: 'Processing cancelled.', type: 'error' }); return; }
                 const { error: bronzeError } = await supabase
                     .schema('bronze')
                     .from('transactions')
@@ -494,6 +500,7 @@ export default function AIProcessing() {
             const MAX_LOOPS = 20;
 
             while (hasMore && loops < MAX_LOOPS) {
+                if (abortSignal.cancelled) { setToast({ message: 'Processing cancelled.', type: 'error' }); return; }
                 const { data: funcData, error: funcError } = await supabase.functions.invoke('process-transactions');
                 if (funcError) throw new Error(`Edge function failed: ${funcError.message}`);
 
@@ -519,6 +526,7 @@ export default function AIProcessing() {
             setToast({ message: `Reprocessing failed: ${err.message}`, type: 'error' });
         } finally {
             setIsReprocessing(false);
+            stopProcessing();
         }
     };
 

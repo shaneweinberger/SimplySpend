@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import Papa from 'papaparse';
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Sparkles, FileText, Plus, X } from 'lucide-react';
+import { useProcessing } from '../../lib/ProcessingContext';
 
 export default function TransactionUploads({ isNested = false, onUploadComplete }) {
     const [pendingFile, setPendingFile] = useState(null);
     const [processing, setProcessing] = useState(false);
     const [status, setStatus] = useState({ type: '', message: '' });
+    const { startProcessing, stopProcessing, getAbortSignal } = useProcessing();
 
     const [savedAccounts, setSavedAccounts] = useState([]);
     const [selectedAccount, setSelectedAccount] = useState('');
@@ -64,6 +66,7 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
 
         setProcessing(true);
         setStatus({ type: 'info', message: 'Uploading…' });
+        startProcessing('Uploading and categorizing your transactions with AI…');
 
         Papa.parse(pendingFile, {
             header: false,
@@ -91,19 +94,25 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                 } catch (err) {
                     setStatus({ type: 'error', message: `Failed to upload: ${err.message}` });
                     setProcessing(false);
+                    stopProcessing();
                 }
             },
-            error: (err) => { setStatus({ type: 'error', message: `CSV error: ${err.message}` }); setProcessing(false); }
+            error: (err) => { setStatus({ type: 'error', message: `CSV error: ${err.message}` }); setProcessing(false); stopProcessing(); }
         });
     };
 
     const processTransactionsInternal = async () => {
+        const abortSignal = getAbortSignal();
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error('Not authenticated.');
 
             let hasMore = true, totalProcessed = 0, loops = 0;
             while (hasMore && loops < 20) {
+                if (abortSignal.cancelled) {
+                    setStatus({ type: 'error', message: 'Processing cancelled.' });
+                    return;
+                }
                 const { data, error } = await supabase.functions.invoke('process-transactions', {
                     headers: { Authorization: `Bearer ${session.access_token}` }
                 });
@@ -123,7 +132,10 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
             let msg = err.message;
             if (err.context?.json) { try { const j = await err.context.json(); if (j?.error) msg = j.error; } catch { } }
             setStatus({ type: 'error', message: `Processing failed: ${msg}` });
-        } finally { setProcessing(false); }
+        } finally {
+            setProcessing(false);
+            stopProcessing();
+        }
     };
 
     // ─── Nested mode ─────────────────────────────────────────────────────────────
@@ -133,8 +145,8 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
 
                 {status.message && (
                     <div className={`px-3 py-2.5 rounded-lg border flex items-center gap-2.5 text-sm ${status.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                            status.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                                'bg-accent-light border-accent-light text-accent-light-text'
+                        status.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                            'bg-accent-light border-accent-light text-accent-light-text'
                         }`}>
                         {status.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                         <p className="font-medium">{status.message}</p>
@@ -169,8 +181,8 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
                             <button key={i}
                                 onClick={() => { setSelectedAccount(account); setIsAddingNewAccount(false); setNewAccountName(''); }}
                                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${selectedAccount === account && !isAddingNewAccount
-                                        ? 'bg-accent text-white border-accent'
-                                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                    ? 'bg-accent text-white border-accent'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                     }`}
                             >{account}</button>
                         ))}
@@ -220,8 +232,8 @@ export default function TransactionUploads({ isNested = false, onUploadComplete 
 
             {status.message && (
                 <div className={`mb-6 p-4 rounded-xl border flex items-center gap-3 ${status.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-                        status.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' :
-                            'bg-accent-light border-accent-ring text-accent-light-text'
+                    status.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' :
+                        'bg-accent-light border-accent-ring text-accent-light-text'
                     }`}>
                     {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
                     <p className="font-medium">{status.message}</p>

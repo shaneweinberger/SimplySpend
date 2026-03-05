@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate, Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { ProcessingProvider } from '../lib/ProcessingContext';
 
 export default function DashboardLayout() {
     const [user, setUser] = useState(null);
@@ -67,14 +68,16 @@ export default function DashboardLayout() {
     if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">Loading...</div>;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar */}
-            <Sidebar user={user} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <ProcessingProvider>
+            <div className="min-h-screen bg-slate-50 flex">
+                {/* Sidebar */}
+                <Sidebar user={user} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
-            {/* Main Content Area */}
-            <div className={`flex-1 p-8 overflow-y-auto h-screen transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
-                <Outlet context={{ startDate, setStartDate, endDate, setEndDate }} />
+                {/* Main Content Area */}
+                <div className={`flex-1 p-4 overflow-y-auto h-screen transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
+                    <Outlet context={{ startDate, setStartDate, endDate, setEndDate }} />
+                </div>
             </div>
-        </div>
+        </ProcessingProvider>
     );
 }

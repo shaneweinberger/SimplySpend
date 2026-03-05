@@ -85,7 +85,7 @@ export default function Analysis() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(25);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     const [transactions, setTransactions] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -163,6 +163,11 @@ export default function Analysis() {
         setCurrentPage(1); // Reset to first page on filter change
         fetchData();
     }, [filterType, localStartDate, localEndDate, selectedWeek, selectedMonth]);
+
+    // Reset to page 1 whenever column filters or category selection change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [advancedFilters, selectedCategory]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -404,11 +409,13 @@ export default function Analysis() {
     const handleBulkEditToggle = () => {
         setIsEditingMode(true);
         setEditDrafts({});
+        setSelectedIds(new Set());
     };
 
     const handleBulkEditCancel = () => {
         setIsEditingMode(false);
         setEditDrafts({});
+        setSelectedIds(new Set());
     };
 
     const onDraftChange = (id, field, value) => {
@@ -458,6 +465,7 @@ export default function Analysis() {
 
             setIsEditingMode(false);
             setEditDrafts({});
+            setSelectedIds(new Set());
         } catch (err) {
             console.error('Error in bulk edit save:', err);
         } finally {
@@ -820,7 +828,7 @@ export default function Analysis() {
                             )}
                         </div>
 
-                        {selectedIds.size > 0 && !isEditingMode && (
+                        {selectedIds.size > 0 && isEditingMode && (
                             <button
                                 onClick={handleDeleteSelected}
                                 disabled={isDeleting}
@@ -931,7 +939,7 @@ export default function Analysis() {
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
                                                         {(filter.field === 'transaction_method' ? ['credit', 'debit'] : ['Uncategorized', ...categoryNames]).map(opt => {
-                                                            const isSelected = filter.value.includes(opt);
+                                                            const isSelected = filter.value.some(v => v.toLowerCase() === opt.toLowerCase());
                                                             return (
                                                                 <label
                                                                     key={opt}
@@ -945,7 +953,7 @@ export default function Analysis() {
                                                                             onChange={(e) => {
                                                                                 e.stopPropagation();
                                                                                 const next = isSelected
-                                                                                    ? filter.value.filter(v => v !== opt)
+                                                                                    ? filter.value.filter(v => v.toLowerCase() !== opt.toLowerCase())
                                                                                     : [...filter.value, opt];
                                                                                 updateFilter(filter.id, { value: next });
                                                                             }}
@@ -953,7 +961,7 @@ export default function Analysis() {
                                                                         <Check size={12} className="absolute text-white scale-0 peer-checked:scale-100 transition-transform pointer-events-none" />
                                                                     </div>
                                                                     <span className="text-sm font-medium text-slate-700">
-                                                                        {opt === 'Uncategorized' ? 'None' : opt.toUpperCase()}
+                                                                        {opt === 'Uncategorized' ? 'None' : opt}
                                                                     </span>
                                                                 </label>
                                                             );
@@ -1036,6 +1044,7 @@ export default function Analysis() {
                                         }}
                                         className="text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent-ring cursor-pointer"
                                     >
+                                        <option value={10}>10</option>
                                         <option value={25}>25</option>
                                         <option value={50}>50</option>
                                         <option value={100}>100</option>

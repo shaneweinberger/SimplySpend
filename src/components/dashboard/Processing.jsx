@@ -13,6 +13,7 @@ import {
     X,
     Trash2,
 } from 'lucide-react';
+import { useProcessing } from '../../lib/ProcessingContext';
 
 export default function Processing() {
     // ── Upload state ──────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ export default function Processing() {
     const [processing, setProcessing] = useState(false);
     const [status, setStatus] = useState({ type: '', message: '' });
     const fileInputRef = useRef(null);
+    const { startProcessing, stopProcessing, getAbortSignal } = useProcessing();
 
     // ── Account state ─────────────────────────────────────────────────────────
     const [savedAccounts, setSavedAccounts] = useState([]);
@@ -175,6 +177,7 @@ export default function Processing() {
         if (!pendingFile || !selectedAccount) return;
         setProcessing(true);
         setStatus({ type: 'info', message: 'Uploading…' });
+        startProcessing('Uploading and categorizing your transactions with AI…');
 
         Papa.parse(pendingFile, {
             header: false,
@@ -202,19 +205,25 @@ export default function Processing() {
                 } catch (err) {
                     setStatus({ type: 'error', message: `Failed to upload: ${err.message}` });
                     setProcessing(false);
+                    stopProcessing();
                 }
             },
-            error: (err) => { setStatus({ type: 'error', message: `CSV error: ${err.message}` }); setProcessing(false); }
+            error: (err) => { setStatus({ type: 'error', message: `CSV error: ${err.message}` }); setProcessing(false); stopProcessing(); }
         });
     };
 
     const processTransactionsInternal = async () => {
+        const abortSignal = getAbortSignal();
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error('Not authenticated.');
 
             let hasMore = true, totalProcessed = 0, loops = 0;
             while (hasMore && loops < 20) {
+                if (abortSignal.cancelled) {
+                    setStatus({ type: 'error', message: 'Processing cancelled.' });
+                    return;
+                }
                 const { data, error } = await supabase.functions.invoke('process-transactions', {
                     headers: { Authorization: `Bearer ${session.access_token}` }
                 });
@@ -234,7 +243,10 @@ export default function Processing() {
             let msg = err.message;
             if (err.context?.json) { try { const j = await err.context.json(); if (j?.error) msg = j.error; } catch { } }
             setStatus({ type: 'error', message: `Processing failed: ${msg}` });
-        } finally { setProcessing(false); }
+        } finally {
+            setProcessing(false);
+            stopProcessing();
+        }
     };
 
     // ── Delete file ───────────────────────────────────────────────────────────

@@ -416,7 +416,7 @@ export default function Overview() {
             {transactions.length === 0 && (
                 <div className="flex flex-col items-center justify-center gap-8 py-16 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Hero message */}
-                    <div className="text-center max-w-lg">
+                    <div className="text-center max-w-2xl">
                         <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-5">
                             <LayoutDashboard size={32} className="text-accent opacity-70" />
                         </div>
