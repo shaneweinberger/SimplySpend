@@ -373,30 +373,39 @@ export default function TransactionTable({
                         {parseFloat(tx.amount) > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
                     </td>
                 );
-            case 'percent':
+            case 'percent': {
                 if (!selectedCategoryInfo) return null;
-                const percent = selectedCategoryInfo.spend > 0
-                    ? (Math.abs(tx.amount) / selectedCategoryInfo.spend) * 100
+                const txAmt = parseFloat(tx.amount);
+                const isInflow = txAmt > 0;
+                const percent = (!isInflow && selectedCategoryInfo.spend > 0)
+                    ? (Math.abs(txAmt) / selectedCategoryInfo.spend) * 100
                     : 0;
                 return (
                     <td key="percent" className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-3 ml-auto">
-                            <span className="text-xs font-bold text-slate-700 w-10 text-right">
-                                {percent.toFixed(1)}%
-                            </span>
-                            <div className="relative w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                                <div
-                                    className="absolute left-0 top-0 bottom-0 transition-all duration-700 rounded-full"
-                                    style={{
-                                        width: `${Math.min(percent, 100)}%`,
-                                        backgroundColor: selectedCategoryInfo.color,
-                                        opacity: 0.6
-                                    }}
-                                />
+                        {isInflow ? (
+                            <div className="flex items-center justify-end pr-2">
+                                <span className="text-xs text-slate-300 font-medium">—</span>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="flex items-center justify-end gap-3 ml-auto">
+                                <span className="text-xs font-bold text-slate-700 w-10 text-right">
+                                    {percent.toFixed(1)}%
+                                </span>
+                                <div className="relative w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                    <div
+                                        className="absolute left-0 top-0 bottom-0 transition-all duration-700 rounded-full"
+                                        style={{
+                                            width: `${Math.min(percent, 100)}%`,
+                                            backgroundColor: selectedCategoryInfo.color,
+                                            opacity: 0.6
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </td>
                 );
+            }
             default:
                 return null;
         }

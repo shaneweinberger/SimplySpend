@@ -194,8 +194,12 @@ export default function Overview() {
     const chartData = useMemo(() => {
         const buckets = {};
         filteredTransactions.forEach(tx => {
-            if (tx.category === 'Income' || parseFloat(tx.amount) > 0) return;
-            const amt = Math.abs(parseFloat(tx.amount));
+            // Skip Income-categorised transactions entirely
+            if (tx.category === 'Income') return;
+            // Net contribution: outflows (negative amount) contribute positively,
+            // inflows (positive amount) reduce the bucket — matching the category breakdown table.
+            const signed = parseFloat(tx.amount);
+            const contribution = -signed; // outflow(-) → positive, inflow(+) → negative
             const date = new Date(tx.date + 'T12:00:00');
             let bucketKey = '', sortKey = '';
             if (groupBy === 'Daily') {
@@ -214,9 +218,8 @@ export default function Overview() {
             }
             if (!buckets[sortKey]) buckets[sortKey] = { label: bucketKey, sortKey, total: 0, count: 0 };
             const cat = tx.category || 'Uncategorized';
-            if (!buckets[sortKey][cat]) buckets[sortKey][cat] = 0;
-            buckets[sortKey][cat] += amt;
-            buckets[sortKey].total += amt;
+            buckets[sortKey][cat] = (buckets[sortKey][cat] || 0) + contribution;
+            buckets[sortKey].total += contribution;
             buckets[sortKey].count += 1;
         });
         const sortedData = Object.values(buckets).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
@@ -246,7 +249,11 @@ export default function Overview() {
                 }
             });
         });
-        return Object.entries(totals).sort((a, b) => b[1] - a[1]);
+        // Exclude categories whose net across the period is zero or negative
+        // (they had at least as much inflow as outflow — no meaningful spend to show)
+        return Object.entries(totals)
+            .filter(([, v]) => v > 0)
+            .sort((a, b) => b[1] - a[1]);
     }, [chartData]);
 
     const defaultCategories = useMemo(() => categoryTotals.slice(0, DEFAULT_VISIBLE_CATEGORIES).map(c => c[0]), [categoryTotals]);
@@ -268,9 +275,17 @@ export default function Overview() {
             let remainingSum = 0;
             Object.keys(bucket).forEach(k => {
                 if (!['label', 'sortKey', 'total', 'count', 'prevTotal', 'pctChange', 'topCategory'].includes(k)) {
-                    if (!activeSet.has(k)) { remainingSum += bucket[k] || 0; delete nb[k]; }
+                    if (activeSet.has(k)) {
+                        // Clamp net-negative category values to 0 (inflows cancelled out the outflows)
+                        nb[k] = Math.max(0, bucket[k] || 0);
+                    } else {
+                        remainingSum += Math.max(0, bucket[k] || 0);
+                        delete nb[k];
+                    }
                 }
             });
+            // Clamp the total used for bar labels too
+            nb.total = Math.max(0, bucket.total || 0);
             // Always include 'remaining' key (even if 0) so the Bar stays mounted and stacking is stable
             nb['remaining'] = remainingSum;
             return nb;
@@ -405,7 +420,7 @@ export default function Overview() {
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
-            <header className="flex items-end justify-between gap-4 flex-wrap">
+            <header className="flex items-end justify-between gap-4 flex-wrap pl-2">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Financial Overview</h1>
                     <p className="text-slate-500">Track spending trends and identify patterns over time.</p>
@@ -472,7 +487,7 @@ export default function Overview() {
             {/* ── Main overview content (hidden until transactions exist) ──── */}
             {transactions.length > 0 && (<>
                 {/* ── Top-Level Controls ──────────────────────────────────────── */}
-                <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-6 bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200 shadow-sm items-center">
+                <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-6 p-5 items-center">
                     <div className="flex flex-wrap items-center gap-6 w-full">
                         <div className="flex flex-col gap-1.5 flex-1 min-w-[320px]">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time Range</label>
