@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Check, Menu, X, Brain, Shield, Zap, LayoutDashboard } from "lucide-react";
+import { Check, Menu, X, Brain, Shield, Zap, LayoutDashboard, CloudUpload, ShieldCheck, LineChart, Lock } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { landingPageConfig } from "../landingPageConfig";
 
@@ -24,13 +24,7 @@ export default function LandingPage() {
             }
         }
 
-        const footer = document.querySelector('footer');
-        if (footer) {
-            const rect = footer.getBoundingClientRect();
-            if (rect.top <= 100) {
-                overDark = true;
-            }
-        }
+        // The footer is now light-bg, so we don't trigger overDark for it. 
 
         setIsOverDarkSection(overDark);
     };
@@ -74,7 +68,6 @@ export default function LandingPage() {
                     <div className="hidden md:flex items-center gap-8 text-sm font-medium">
                         <a href="#features" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Features</a>
                         <a href="#how-it-works" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>How it Works</a>
-                        <a href="#security" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Security</a>
                     </div>
 
                     {/* Right Area */}
@@ -113,7 +106,6 @@ export default function LandingPage() {
                         }`}>
                         <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Features</a>
                         <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>How it Works</a>
-                        <a href="#security" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Security</a>
                         <hr className={`transition-opacity duration-500 ${isOverDarkSection ? 'border-[var(--lp-primary-text)] opacity-20' : 'border-[var(--lp-accent-border)]'}`} />
                         <button onClick={() => navigate('/auth')} className={`w-full text-center py-2 font-medium transition-opacity duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-90 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Log In</button>
                         <button onClick={() => navigate('/auth?signup=true')} className={`w-full py-3 rounded-xl font-medium transition-colors duration-500 ${isOverDarkSection ? 'bg-[var(--lp-primary-text)] text-[var(--lp-primary)] hover:bg-white' : 'bg-[var(--lp-primary)] text-[var(--lp-primary-text)] hover:opacity-90'}`}>Get Started</button>
@@ -199,84 +191,161 @@ export default function LandingPage() {
             </section>
 
             {/* How it Works Section */}
-            <section id="how-it-works" className="relative z-10 min-h-screen w-full snap-start flex flex-col justify-center px-4 py-20 bg-[var(--lp-primary)] text-[var(--lp-primary-text)]">
-                <div className="max-w-6xl mx-auto w-full">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                            From Raw Data to Real Intelligence
+            <section id="how-it-works" className={`relative z-10 w-full h-screen snap-start flex flex-col justify-start ${landingPageConfig.howItWorks.sectionPadding} px-6 bg-[var(--lp-primary)] text-[var(--lp-primary-text)] overflow-hidden`}>
+                <div className="max-w-6xl mx-auto w-full relative">
+                    <div className="text-center mb-24">
+                        <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                            {landingPageConfig.howItWorks.title}
                         </h2>
-                        <p className="text-[var(--lp-primary-text)]/80 text-lg md:text-xl max-w-2xl mx-auto">
-                            Our 4-step local pipeline transforms messy CSVs into a pristine financial system.
+                        <p className="text-[var(--lp-primary-text)]/80 text-lg md:text-xl">
+                            {landingPageConfig.howItWorks.subtitle}
                         </p>
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-8 relative">
-                        {/* Connector Line (Desktop) */}
-                        <div className="hidden md:block absolute top-[20%] left-[10%] right-[10%] h-[1px] bg-[var(--lp-primary-text)]/20 z-0" />
+                    {/* Desktop Horizontal Timeline */}
+                    <div className={`hidden md:block relative max-w-5xl mx-auto h-[360px] ${landingPageConfig.howItWorks.timelineOffset}`}>
+                        {/* Central Horizontal Line */}
+                        <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-white opacity-10 -translate-y-1/2 z-0" />
 
-                        {[
-                            {
-                                step: "01",
-                                title: "Ingest",
-                                subtitle: "The Raw Layer",
-                                desc: "Upload Credit & Debit CSVs. The system extracts dates and amounts into a 'Silver' dataset."
-                            },
-                            {
-                                step: "02",
-                                title: "Refine",
-                                subtitle: "The Intelligence Layer",
-                                desc: "Create simple rules (e.g. 'Amazon' = 'Shopping'). Override specific transactions manually."
-                            },
-                            {
-                                step: "03",
-                                title: "Process",
-                                subtitle: "The Action Layer",
-                                desc: "One-click 'Reprocess' runs the pipeline, applying all rules to historical data instantly."
-                            },
-                            {
-                                step: "04",
-                                title: "Analyze",
-                                subtitle: "The Value Layer",
-                                desc: "Dashboards and AI Chatbot update instantly with your clean, categorized 'Gold' dataset."
-                            }
-                        ].map((item, i) => (
-                            <div key={i} className="relative z-10 bg-[var(--lp-primary)] p-8 rounded-3xl shadow-lg border border-[var(--lp-primary-text)]/10 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group hover:bg-[var(--lp-primary-text)]/5">
-                                <div className="text-center">
-                                    <span className="text-3xl font-light text-[var(--lp-primary-text)]/30 group-hover:text-[var(--lp-primary-text)]/60 transition-colors block mb-4">{item.step}</span>
-                                    <h3 className="font-bold text-xl mb-1">{item.title}</h3>
-                                    <span className="text-xs font-semibold text-[var(--lp-primary-text)]/60 uppercase tracking-widest block mb-4">{item.subtitle}</span>
-                                    <p className="text-sm text-[var(--lp-primary-text)]/80 leading-relaxed">{item.desc}</p>
+                        {/* Progress Line */}
+                        <div className="absolute top-1/2 left-0 w-full h-[2px] bg-gradient-to-r from-white/0 via-white/40 to-white/0 -translate-y-1/2 z-0" />
+
+                        <div className="grid grid-cols-4 h-full relative z-10">
+                            {/* Step 1 (Above) */}
+                            <div className="relative flex flex-col items-center justify-center">
+                                {/* The node sits exactly on the line in the center */}
+                                <div className="w-10 h-10 rounded-full bg-[var(--lp-primary)] border-2 border-white/20 text-white text-sm font-bold flex items-center justify-center z-20 shadow-[0_0_15px_rgba(255,255,255,0.05)]">{landingPageConfig.howItWorks.steps[0].number}</div>
+
+                                <div className="absolute bottom-[calc(50%+20px)] flex flex-col items-center w-full">
+                                    <div className="mb-6 text-center px-4">
+                                        <h3 className="text-lg font-semibold mb-1 whitespace-nowrap">{landingPageConfig.howItWorks.steps[0].title}</h3>
+                                        <p className="text-sm text-white opacity-40 max-w-[180px] mx-auto mb-3">
+                                            {landingPageConfig.howItWorks.steps[0].description}
+                                        </p>
+                                        <CloudUpload className="w-6 h-6 text-white opacity-60 mx-auto" />
+                                    </div>
+                                    <div className="w-[1px] h-[50px] bg-white opacity-20" />
                                 </div>
                             </div>
-                        ))}
+
+                            {/* Step 2 (Below) */}
+                            <div className="relative flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-[var(--lp-primary)] border-2 border-white/20 text-white text-sm font-bold flex items-center justify-center z-20 shadow-[0_0_15px_rgba(255,255,255,0.05)]">{landingPageConfig.howItWorks.steps[1].number}</div>
+
+                                <div className="absolute top-[calc(50%+20px)] flex flex-col items-center w-full">
+                                    <div className="w-[1px] h-[50px] bg-white opacity-20" />
+                                    <div className="mt-6 text-center px-4">
+                                        <Brain className="w-6 h-6 text-white opacity-60 mx-auto mb-3" />
+                                        <h3 className="text-lg font-semibold mb-1 whitespace-nowrap">{landingPageConfig.howItWorks.steps[1].title}</h3>
+                                        <p className="text-sm text-white opacity-40 max-w-[180px] mx-auto">
+                                            {landingPageConfig.howItWorks.steps[1].description}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Step 3 (Above) */}
+                            <div className="relative flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-[var(--lp-primary)] border-2 border-white/20 text-white text-sm font-bold flex items-center justify-center z-20 shadow-[0_0_15px_rgba(255,255,255,0.05)]">{landingPageConfig.howItWorks.steps[2].number}</div>
+
+                                <div className="absolute bottom-[calc(50%+20px)] flex flex-col items-center w-full">
+                                    <div className="mb-6 text-center px-4">
+                                        <h3 className="text-lg font-semibold mb-1 whitespace-nowrap">{landingPageConfig.howItWorks.steps[2].title}</h3>
+                                        <p className="text-sm text-white opacity-40 max-w-[180px] mx-auto mb-3">
+                                            {landingPageConfig.howItWorks.steps[2].description}
+                                        </p>
+                                        <ShieldCheck className="w-6 h-6 text-white opacity-60 mx-auto" />
+                                    </div>
+                                    <div className="w-[1px] h-[50px] bg-white opacity-20" />
+                                </div>
+                            </div>
+
+                            {/* Step 4 (Below) */}
+                            <div className="relative flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 rounded-full bg-[var(--lp-primary)] border-2 border-white/20 text-white text-sm font-bold flex items-center justify-center z-20 shadow-[0_0_15px_rgba(255,255,255,0.05)]">{landingPageConfig.howItWorks.steps[3].number}</div>
+
+                                <div className="absolute top-[calc(50%+20px)] flex flex-col items-center w-full">
+                                    <div className="w-[1px] h-[50px] bg-white opacity-20" />
+                                    <div className="mt-6 text-center px-4">
+                                        <LineChart className="w-6 h-6 text-white opacity-60 mx-auto mb-3" />
+                                        <h3 className="text-lg font-semibold mb-1 whitespace-nowrap">{landingPageConfig.howItWorks.steps[3].title}</h3>
+                                        <p className="text-sm text-white opacity-40 max-w-[180px] mx-auto">
+                                            {landingPageConfig.howItWorks.steps[3].description}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Mobile Vertical Timeline (fallback) */}
+                    <div className="md:hidden relative mx-auto space-y-12 py-8 pl-4">
+                        <div className="absolute top-4 bottom-4 left-10 w-[2px] bg-[var(--lp-primary-text)] opacity-10 z-0" />
+
+                        {landingPageConfig.howItWorks.steps.map((step, index) => {
+                            const Icon = [CloudUpload, Brain, ShieldCheck, LineChart][index];
+                            return (
+                                <div key={index} className="relative z-10 flex flex-col group pl-20">
+                                    <div className="absolute left-0 top-0 w-10 h-10 rounded-full bg-[var(--lp-primary)] border-[2px] border-white/20 text-[var(--lp-primary-text)] font-bold flex items-center justify-center text-sm z-10 ml-5 -translate-x-1/2">
+                                        {step.number}
+                                    </div>
+                                    <h3 className="text-[18px] font-semibold mb-1.5 flex items-center gap-3 whitespace-nowrap">
+                                        {Icon && <Icon className="w-5 h-5 text-[var(--lp-primary-text)] opacity-80" />}
+                                        {step.title}
+                                    </h3>
+                                    <p className="text-[14px] text-[var(--lp-primary-text)] opacity-60 leading-snug">
+                                        {step.description}
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-16 md:mt-40 text-center pb-8 opacity-0 animate-[fade-in-up_0.5s_ease-out_forwards]" style={{ animationDelay: '1400ms' }}>
+                        <p className="inline-flex items-center justify-center gap-2 text-[13px] font-medium text-[var(--lp-primary-text)]/70 bg-[var(--lp-primary-text)]/5 px-6 py-2.5 rounded-full border border-[var(--lp-primary-text)]/10 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.02)] transition-opacity hover:opacity-100 cursor-default">
+                            <Lock className="w-3.5 h-3.5 opacity-80" />
+                            Bank-grade security. Your data is encrypted and never shared.
+                        </p>
                     </div>
                 </div>
             </section>
 
+            {/* CTA Section */}
+            <section className="relative z-10 w-full py-24 bg-[var(--lp-bg)] snap-start flex flex-col items-center justify-center px-6 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-[var(--lp-primary)] mb-8">
+                    Ready to take control of your finances?
+                </h2>
+                <button
+                    onClick={() => navigate('/auth?signup=true')}
+                    className="bg-[var(--lp-primary)] hover:bg-[var(--lp-primary)]/90 text-[var(--lp-primary-text)] text-lg font-medium px-10 py-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:-translate-y-1"
+                >
+                    Get Started
+                </button>
+            </section>
+
             {/* Footer */}
-            <footer className="relative z-10 bg-[var(--lp-primary)] text-[var(--lp-primary-text)] py-20 px-4 border-t border-[var(--lp-primary-text)]/10 snap-start flex flex-col justify-center w-full">
+            <footer className={`relative z-10 bg-[var(--lp-bg)] text-[var(--lp-primary)] ${landingPageConfig.footer.padding} px-4 border-t border-[var(--lp-primary)]/10 snap-start flex flex-col justify-center w-full`}>
                 <div className="max-w-6xl mx-auto w-full grid md:grid-cols-4 gap-12">
                     <div className="col-span-2">
-                        <div className="flex items-center gap-2 font-bold text-2xl mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--lp-primary-text)] text-[var(--lp-primary)] flex items-center justify-center">F</div>
+                        <div className="flex items-center gap-2 font-bold text-2xl mb-6 text-[var(--lp-primary)]">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--lp-primary)] text-[var(--lp-primary-text)] flex items-center justify-center">F</div>
                             Finsight
                         </div>
-                        <p className="max-w-sm text-[var(--lp-primary-text)]/70 leading-relaxed text-lg">The intelligent, privacy-focused personal finance tracker for the modern era.</p>
+                        <p className="max-w-sm text-[var(--lp-primary)]/70 leading-relaxed text-lg">The intelligent, privacy-focused personal finance tracker for the modern era.</p>
                     </div>
                     <div>
-                        <h4 className="font-bold mb-6 text-lg">Product</h4>
-                        <ul className="space-y-4 text-[var(--lp-primary-text)]/70">
-                            <li><a href="#features" className="hover:text-[var(--lp-primary-text)] transition-colors">Features</a></li>
-                            <li><a href="#security" className="hover:text-[var(--lp-primary-text)] transition-colors">Security</a></li>
-                            <li><a href="#" className="hover:text-[var(--lp-primary-text)] transition-colors">Changelog</a></li>
+                        <h4 className="font-bold mb-6 text-[var(--lp-primary)] text-lg">Product</h4>
+                        <ul className="space-y-4 text-[var(--lp-primary)]/70">
+                            <li><a href="#features" className="hover:text-[var(--lp-primary)] transition-colors">Features</a></li>
+                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">Changelog</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold mb-6 text-lg">Company</h4>
-                        <ul className="space-y-4 text-[var(--lp-primary-text)]/70">
-                            <li><a href="#" className="hover:text-[var(--lp-primary-text)] transition-colors">About</a></li>
-                            <li><a href="#" className="hover:text-[var(--lp-primary-text)] transition-colors">Contact</a></li>
-                            <li><a href="#" className="hover:text-[var(--lp-primary-text)] transition-colors">Twitter</a></li>
+                        <h4 className="font-bold mb-6 text-[var(--lp-primary)] text-lg">Company</h4>
+                        <ul className="space-y-4 text-[var(--lp-primary)]/70">
+                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">About</a></li>
+                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">Contact</a></li>
+                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">Twitter</a></li>
                         </ul>
                     </div>
                 </div>
@@ -297,6 +366,31 @@ export default function LandingPage() {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fade-in-down {
+          from { opacity: 0; transform: translateY(-15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes grow-line {
+          from { transform: scaleX(0); opacity: 0; }
+          to { transform: scaleX(1); opacity: 1; }
+        }
+        
+        @keyframes grow-y {
+          from { transform: scaleY(0); opacity: 0; }
+          to { transform: scaleY(1); opacity: 1; }
         }
       `}</style>
         </div>

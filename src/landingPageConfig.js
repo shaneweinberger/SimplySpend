@@ -39,5 +39,36 @@ export const landingPageConfig = {
             description: "See exactly where your money goes with clean category summaries and breakdowns.",
             image: "/feature-screenshots/breakdown-sc.png"
         }
-    ]
+    ],
+    howItWorks: {
+        title: "How It Works",
+        subtitle: "Transform your finances in four simple, secure steps.",
+        sectionPadding: "pt-32",
+        timelineOffset: "mt-24",
+        steps: [
+            {
+                number: "1",
+                title: "1. Upload Transactions",
+                description: "Upload a CSV file of your transaction history exported from your bank."
+            },
+            {
+                number: "2",
+                title: "2. AI Categorization",
+                description: "Transactions are processed by AI using your custom categories and rules."
+            },
+            {
+                number: "3",
+                title: "3. Secure Storage",
+                description: "Cleaned transactions are securely stored for editing, tracking, and analysis."
+            },
+            {
+                number: "4",
+                title: "4. Insights & Analysis",
+                description: "Visualizations and models turn your data into clear spending insights."
+            }
+        ]
+    },
+    footer: {
+        padding: "pt-20 pb-12",
+    }
 };
