@@ -5,12 +5,34 @@ import { landingPageConfig } from "../landingPageConfig";
 
 export default function LandingPage() {
     const [isScrolled, setIsScrolled] = useState(false);
+    const [isOverDarkSection, setIsOverDarkSection] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
 
     // Attach onScroll to the outer div instead of window since we are using h-screen overflow-y-auto
     const handleScroll = (e) => {
         setIsScrolled(e.target.scrollTop > 20);
+
+        let overDark = false;
+
+        // Use document lookup and bounding rect to calculate if these dark sections are directly beneath the ~80px tall sticky nav
+        const howItWorks = document.getElementById('how-it-works');
+        if (howItWorks) {
+            const rect = howItWorks.getBoundingClientRect();
+            if (rect.top <= 100 && rect.bottom >= 100) {
+                overDark = true;
+            }
+        }
+
+        const footer = document.querySelector('footer');
+        if (footer) {
+            const rect = footer.getBoundingClientRect();
+            if (rect.top <= 100) {
+                overDark = true;
+            }
+        }
+
+        setIsOverDarkSection(overDark);
     };
 
     // Use dynamic style block to map CSS variables to the document
@@ -33,37 +55,42 @@ export default function LandingPage() {
             {/* Navbar */}
             <nav
                 className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 w-[95%] max-w-5xl transition-all duration-500 ${isScrolled
-                    ? "bg-[var(--lp-bg)]/90 backdrop-blur-md shadow-lg border border-[var(--lp-accent-border)] py-3 rounded-full"
+                    ? isOverDarkSection
+                        ? "bg-[var(--lp-primary)]/80 backdrop-blur-md shadow-lg border border-[var(--lp-primary-text)]/20 py-3 rounded-full"
+                        : "bg-[var(--lp-bg)]/90 backdrop-blur-md shadow-lg border border-[var(--lp-accent-border)] py-3 rounded-full"
                     : "bg-transparent py-4"
                     }`}
             >
                 <div className="px-6 flex items-center justify-between">
                     {/* Logo */}
-                    <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-[var(--lp-primary)]">
-                        <div className="w-8 h-8 rounded-lg bg-[var(--lp-primary)] text-[var(--lp-primary-text)] flex items-center justify-center">
+                    <div className={`flex items-center gap-2 font-bold text-xl tracking-tight transition-colors duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)]' : 'text-[var(--lp-primary)]'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-500 ${isOverDarkSection ? 'bg-[var(--lp-primary-text)] text-[var(--lp-primary)]' : 'bg-[var(--lp-primary)] text-[var(--lp-primary-text)]'}`}>
                             <span className="text-lg">F</span>
                         </div>
                         FinSight
                     </div>
 
                     {/* Desktop Links */}
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[var(--lp-primary)]/70">
-                        <a href="#features" className="hover:text-[var(--lp-primary)] transition-colors">Features</a>
-                        <a href="#how-it-works" className="hover:text-[var(--lp-primary)] transition-colors">How it Works</a>
-                        <a href="#security" className="hover:text-[var(--lp-primary)] transition-colors">Security</a>
+                    <div className="hidden md:flex items-center gap-8 text-sm font-medium">
+                        <a href="#features" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Features</a>
+                        <a href="#how-it-works" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>How it Works</a>
+                        <a href="#security" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Security</a>
                     </div>
 
                     {/* Right Area */}
                     <div className="hidden md:flex items-center gap-4">
                         <button
                             onClick={() => navigate('/auth')}
-                            className="text-sm font-medium text-[var(--lp-primary)]/70 hover:text-[var(--lp-primary)] transition-colors"
+                            className={`text-sm font-medium transition-opacity duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-90 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}
                         >
                             Log In
                         </button>
                         <button
                             onClick={() => navigate('/auth?signup=true')}
-                            className="bg-[var(--lp-primary)] hover:bg-[var(--lp-primary)]/90 text-[var(--lp-primary-text)] text-sm font-medium px-5 py-2.5 rounded-full transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-0.5"
+                            className={`text-sm font-medium px-5 py-2.5 rounded-full transition-all duration-300 shadow-md transform hover:-translate-y-0.5 hover:shadow-xl ${isOverDarkSection
+                                ? 'bg-[var(--lp-primary-text)] text-[var(--lp-primary)] hover:bg-white'
+                                : 'bg-[var(--lp-primary)] text-[var(--lp-primary-text)] opacity-90 hover:opacity-100'
+                                }`}
                         >
                             Get Started
                         </button>
@@ -71,7 +98,7 @@ export default function LandingPage() {
 
                     {/* Mobile Menu Button */}
                     <button
-                        className="md:hidden p-2 text-[var(--lp-primary)]"
+                        className={`md:hidden p-2 transition-colors duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)]' : 'text-[var(--lp-primary)]'}`}
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                     >
                         {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -80,13 +107,16 @@ export default function LandingPage() {
 
                 {/* Mobile Menu */}
                 {isMobileMenuOpen && (
-                    <div className="absolute top-full left-0 w-full bg-[var(--lp-bg)] rounded-2xl shadow-xl mt-2 p-4 flex flex-col gap-4 border border-[var(--lp-accent-border)] md:hidden">
-                        <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-[var(--lp-primary)]/70 hover:text-[var(--lp-primary)] font-medium p-2">Features</a>
-                        <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="text-[var(--lp-primary)]/70 hover:text-[var(--lp-primary)] font-medium p-2">How it Works</a>
-                        <a href="#security" onClick={() => setIsMobileMenuOpen(false)} className="text-[var(--lp-primary)]/70 hover:text-[var(--lp-primary)] font-medium p-2">Security</a>
-                        <hr className="border-[var(--lp-accent-border)]" />
-                        <button onClick={() => navigate('/auth')} className="w-full text-center py-2 font-medium text-[var(--lp-primary)]/70">Log In</button>
-                        <button onClick={() => navigate('/auth?signup=true')} className="w-full bg-[var(--lp-primary)] hover:bg-[var(--lp-primary)]/90 text-[var(--lp-primary-text)] py-3 rounded-xl font-medium">Get Started</button>
+                    <div className={`absolute top-full left-0 w-full rounded-2xl shadow-xl mt-2 p-4 flex flex-col gap-4 border md:hidden transition-colors duration-500 ${isOverDarkSection
+                        ? 'bg-[var(--lp-primary)] border-[var(--lp-primary-text)] opacity-90'
+                        : 'bg-[var(--lp-bg)] border-[var(--lp-accent-border)]'
+                        }`}>
+                        <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Features</a>
+                        <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>How it Works</a>
+                        <a href="#security" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Security</a>
+                        <hr className={`transition-opacity duration-500 ${isOverDarkSection ? 'border-[var(--lp-primary-text)] opacity-20' : 'border-[var(--lp-accent-border)]'}`} />
+                        <button onClick={() => navigate('/auth')} className={`w-full text-center py-2 font-medium transition-opacity duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-90 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Log In</button>
+                        <button onClick={() => navigate('/auth?signup=true')} className={`w-full py-3 rounded-xl font-medium transition-colors duration-500 ${isOverDarkSection ? 'bg-[var(--lp-primary-text)] text-[var(--lp-primary)] hover:bg-white' : 'bg-[var(--lp-primary)] text-[var(--lp-primary-text)] hover:opacity-90'}`}>Get Started</button>
                     </div>
                 )}
             </nav>
