@@ -82,14 +82,14 @@ export default function Overview() {
     const [loading, setLoading] = useState(true);
 
     // Top-Level Controls — persisted across in-app navigation via sessionStorage
-    const [timeRange, setTimeRange] = useSessionState('overview.timeRange', '30D');
+    const [timeRange, setTimeRange] = useSessionState('overview.timeRange', '6M');
     const [customStartDate, setCustomStartDate] = useSessionState('overview.customStartDate', (() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
     })());
     const [customEndDate, setCustomEndDate] = useSessionState('overview.customEndDate', new Date().toISOString().split('T')[0]);
-    const [groupBy, setGroupBy] = useSessionState('overview.groupBy', 'Weekly');
+    const [groupBy, setGroupBy] = useSessionState('overview.groupBy', 'Monthly');
     // Ephemeral interaction state — intentionally NOT persisted
     const [focusCategory, setFocusCategory] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -632,7 +632,7 @@ export default function Overview() {
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.chart.gridline} />
                                             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
-                                            <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 4 }} content={<HoverTooltip />} />
+                                            <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 4 }} content={<HoverTooltip />} isAnimationActive={false} />
                                             <Bar
                                                 dataKey={selectedCategory}
                                                 fill={getColorForCategory(selectedCategory)}
@@ -650,7 +650,7 @@ export default function Overview() {
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.chart.gridline} />
                                             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
-                                            <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 6 }} content={<HoverTooltip />} />
+                                            <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 6 }} content={<HoverTooltip />} isAnimationActive={false} />
                                             {activeVisibleCategories.map((cat, index) => {
                                                 // last user-category bar = topmost when no remaining
                                                 const isTop = remainingCount === 0 && index === activeVisibleCategories.length - 1;
