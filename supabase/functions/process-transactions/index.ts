@@ -205,7 +205,7 @@ serve(async (req: { method: string; }) => {
                         description: item.final_description || codeData.description,
                         category: item.final_category,
                         amount: codeData.amount,
-                        date: codeData.date,
+                        transaction_date: codeData.date,
                         transaction_type: codeData.transaction_type,
                         transaction_account: codeData.transaction_account,
                         processed_at: new Date().toISOString(),

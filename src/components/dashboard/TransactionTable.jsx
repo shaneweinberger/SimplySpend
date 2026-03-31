@@ -84,8 +84,8 @@ export default function TransactionTable({
                     aValue = parseFloat(aValue);
                     bValue = parseFloat(bValue);
                 } else if (sortConfig.key === 'date') {
-                    aValue = new Date(aValue).getTime();
-                    bValue = new Date(bValue).getTime();
+                    aValue = new Date(a.effective_date).getTime();
+                    bValue = new Date(b.effective_date).getTime();
                 } else {
                     // Strings (description, type, category)
                     aValue = (aValue || '').toString().toLowerCase();
@@ -311,12 +311,69 @@ export default function TransactionTable({
                         </div>
                     </td>
                 );
-            case 'date':
+            case 'date': {
+                const effectiveDate = tx.effective_date;
+                const isOverridden = !!tx.recognized_date;
+                
+                // Determine the value to show in the date picker.
+                // If the user has clicked Reset (null), it should revert to showing the original transaction date.
+                let editValue = effectiveDate;
+                if (editDrafts[tx.id] && 'recognized_date' in editDrafts[tx.id]) {
+                    editValue = editDrafts[tx.id].recognized_date || tx.transaction_date;
+                }
+
                 return (
-                    <td key="date" className="px-6 py-4 text-sm text-slate-500 font-medium">
-                        {formatDate(tx.date)}
+                    <td key="date" className="px-6 py-4 text-sm font-medium">
+                        {isEditingMode ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="date"
+                                    className="w-[125px] bg-transparent p-1 -ml-1 border border-dashed border-slate-300 rounded hover:border-accent-border focus:border-solid focus:border-accent outline-none text-sm font-medium text-slate-900 transition-colors"
+                                    value={editValue}
+                                    onChange={(e) => onDraftChange(tx.id, 'recognized_date', e.target.value || null)}
+                                />
+                                {isOverridden && (
+                                    <button 
+                                        onClick={() => onDraftChange(tx.id, 'recognized_date', null)}
+                                        className="text-slate-400 hover:text-rose-500 rounded p-1 transition-colors bg-slate-100 hover:bg-rose-50"
+                                        title="Reset to original transaction date"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 group">
+                                <span className={`text-slate-500 transition-colors ${isOverridden ? 'text-accent font-bold' : ''}`}>
+                                    {formatDate(effectiveDate)}
+                                </span>
+                                {isOverridden && (
+                                    <div className="relative group/tooltip flex items-center justify-center w-4 h-4 cursor-help">
+                                        {/* The visible dot */}
+                                        <div className="w-1.5 h-1.5 rounded-full bg-accent animate-in zoom-in" />
+                                        
+                                        {/* The custom popover tooltip */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 group-hover/tooltip:opacity-100 group-hover/tooltip:-translate-y-1 min-w-max pointer-events-none transition-all duration-200 bg-slate-800 text-white text-[10px] font-bold px-3 py-2 rounded-lg shadow-xl z-50">
+                                            <div className="flex flex-col gap-1 text-left">
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="font-medium">Original</span>
+                                                    <span>{formatDate(tx.transaction_date)}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-3">
+                                                    <span className="font-medium">Recognized</span>
+                                                    <span>{formatDate(tx.recognized_date)}</span>
+                                                </div>
+                                            </div>
+                                            {/* Tooltip arrow */}
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-800" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </td>
                 );
+            }
             case 'description':
                 return (
                     <td key="description" className="px-6 py-4">

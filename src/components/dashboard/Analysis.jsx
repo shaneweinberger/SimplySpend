@@ -180,7 +180,7 @@ export default function Analysis() {
             let query = supabase
                 .from('silver_transactions')
                 .select('*')
-                .order('date', { ascending: false });
+                .order('effective_date', { ascending: false });
 
             let start, end;
 
@@ -200,8 +200,8 @@ export default function Analysis() {
                     end = localEndDate;
                 }
 
-                if (start) query = query.gte('date', start);
-                if (end) query = query.lte('date', end);
+                if (start) query = query.gte('effective_date', start);
+                if (end) query = query.lte('effective_date', end);
             }
 
             const { data, error } = await query;
@@ -476,8 +476,17 @@ export default function Analysis() {
         try {
             // Update items locally first for immediate UI response
             setTransactions(prev => prev.map(t => {
-                if (editDrafts[t.id]) {
-                    return { ...t, ...editDrafts[t.id], is_edited: true };
+                const drafted = editDrafts[t.id];
+                if (drafted) {
+                    const newRecognizedDate = drafted.recognized_date !== undefined ? drafted.recognized_date : t.recognized_date;
+                    const newEffectiveDate = newRecognizedDate || t.transaction_date;
+                    
+                    return { 
+                        ...t, 
+                        ...drafted, 
+                        effective_date: newEffectiveDate,
+                        is_edited: true 
+                    };
                 }
                 return t;
             }));

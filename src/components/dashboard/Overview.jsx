@@ -143,7 +143,7 @@ export default function Overview() {
 
     const fetchTransactions = async () => {
         try {
-            const { data, error } = await supabase.from('silver_transactions').select('*').order('date', { ascending: false });
+            const { data, error } = await supabase.from('silver_transactions').select('*').order('effective_date', { ascending: false });
             if (error) throw error;
             setTransactions(data || []);
         } catch (err) { console.error('Error fetching transactions:', err); }
@@ -178,7 +178,7 @@ export default function Overview() {
 
     const filteredTransactions = useMemo(() => (
         transactions.filter(tx => {
-            const txDate = new Date(tx.date + 'T12:00:00');
+            const txDate = new Date(tx.effective_date + 'T12:00:00');
             return txDate >= effectiveDateRange.start && txDate <= effectiveDateRange.end;
         })
     ), [transactions, effectiveDateRange]);
@@ -200,11 +200,11 @@ export default function Overview() {
             // inflows (positive amount) reduce the bucket — matching the category breakdown table.
             const signed = parseFloat(tx.amount);
             const contribution = -signed; // outflow(-) → positive, inflow(+) → negative
-            const date = new Date(tx.date + 'T12:00:00');
+            const date = new Date(tx.effective_date + 'T12:00:00');
             let bucketKey = '', sortKey = '';
             if (groupBy === 'Daily') {
                 bucketKey = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                sortKey = tx.date;
+                sortKey = tx.effective_date;
             } else if (groupBy === 'Weekly') {
                 const d = new Date(date);
                 const day = d.getDay();
