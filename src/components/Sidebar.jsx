@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database } from 'lucide-react';
+import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database, Wallet } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { theme } from '../theme';
 import peanutLove from '../assets/peanut_love.jpg';
 import SettingsModal from './dashboard/SettingsModal';
 
 // Helper component for hover state
-function SidebarLink({ item, isCollapsed }) {
+function SidebarLink({ item, isCollapsed, variant = 'primary' }) {
     const [isHovered, setIsHovered] = useState(false);
 
     return (
@@ -17,13 +17,18 @@ function SidebarLink({ item, isCollapsed }) {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             style={({ isActive }) => ({
-                backgroundColor: isActive ? theme.sidebar.activeItemBackground : (isHovered ? theme.sidebar.hoverItemBackground : undefined),
-                color: isActive ? theme.sidebar.activeItemText : (isHovered ? theme.sidebar.hoverItemText : theme.sidebar.inactiveItemText),
+                backgroundColor: isActive 
+                    ? (variant === 'primary' ? theme.sidebar.activeItemBackground : 'transparent') 
+                    : (isHovered ? theme.sidebar.hoverItemBackground : undefined),
+                color: isActive 
+                    ? (variant === 'primary' ? theme.sidebar.activeItemText : '#9ca3af') 
+                    : (isHovered ? theme.sidebar.hoverItemText : (variant === 'secondary' ? '#9ca3af' : theme.sidebar.inactiveItemText)),
             })}
             className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
-                    ? 'shadow-md mx-2'
-                    : 'mx-0'
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
+                    isActive
+                        ? (variant === 'primary' ? 'shadow-md mx-2 font-semibold' : 'bg-slate-100/60 mx-2 font-medium')
+                        : 'mx-0 font-medium'
                 } ${isCollapsed ? 'justify-center mx-0 px-0 w-10 h-10 ml-1' : ''}`
             }
         >
@@ -32,6 +37,8 @@ function SidebarLink({ item, isCollapsed }) {
         </NavLink>
     );
 }
+
+// (Section labels removed to simplify sidebar design)
 
 // Helper component for dropdown items
 function DropdownItem({ icon, label, onClick, className }) {
@@ -88,11 +95,18 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
         navigate('/');
     };
 
-    const navItems = [
+    const mainNavItems = [
         { path: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={20} />, end: true },
         { path: '/dashboard/analysis', label: 'Analysis', icon: <PieChart size={20} /> },
-        { path: '/dashboard/ai-processing', label: 'AI Processing', icon: <Zap size={20} /> },
-        { path: '/dashboard/processing', label: 'Transaction Uploads', icon: <Database size={20} /> },
+        { path: '/dashboard/budgeting', label: 'Budgeting', icon: <Wallet size={20} /> },
+    ];
+
+    const dataNavItems = [
+        { path: '/dashboard/processing', label: 'Transaction Uploads', icon: <Upload size={20} /> },
+    ];
+
+    const automationNavItems = [
+        { path: '/dashboard/ai-processing', label: 'AI Rules', icon: <Zap size={20} /> },
     ];
 
     return (
@@ -137,9 +151,20 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
             </div>
 
             {/* Navigation */}
-            <div className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
-                {navItems.map((item) => (
-                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} />
+            <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+                {mainNavItems.map((item) => (
+                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
+                ))}
+
+                {/* Subtle Divider between groups */}
+                <div className={`my-6 border-t border-slate-700/40 transition-all ${isCollapsed ? 'mx-2' : 'mx-4'}`} />
+
+                {dataNavItems.map((item) => (
+                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
+                ))}
+
+                {automationNavItems.map((item) => (
+                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
                 ))}
             </div>
 
