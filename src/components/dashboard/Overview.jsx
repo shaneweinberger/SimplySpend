@@ -13,6 +13,8 @@ import {
     ArrowDownRight,
     Activity,
     X,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import {
     BarChart,
@@ -185,10 +187,22 @@ export default function Overview() {
 
     // ── Category helpers ───────────────────────────────────────────────────────
     const categoryNames = categories.map(c => c.name);
+    const fullCategoryList = useMemo(() => [...categoryNames, 'Uncategorized'], [categoryNames]);
 
     useEffect(() => {
         if (categoryNames.length > 0 && !selectedCategory) setSelectedCategory(categoryNames[0]);
     }, [categoryNames, selectedCategory]);
+
+    const handleCycleCategory = useCallback((direction) => {
+        const currentIndex = fullCategoryList.indexOf(selectedCategory);
+        if (currentIndex === -1) return;
+        
+        let nextIndex = currentIndex + direction;
+        if (nextIndex < 0) nextIndex = fullCategoryList.length - 1;
+        if (nextIndex >= fullCategoryList.length) nextIndex = 0;
+        
+        setSelectedCategory(fullCategoryList[nextIndex]);
+    }, [fullCategoryList, selectedCategory]);
 
     // ── Chart data ─────────────────────────────────────────────────────────────
     const chartData = useMemo(() => {
@@ -544,11 +558,29 @@ export default function Overview() {
                         </label>
 
                         {focusCategory && (
-                            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
-                                className="bg-accent-light/50 border border-accent-ring text-accent-light-text font-bold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block min-w-[160px] p-2 outline-none cursor-pointer animate-in fade-in slide-in-from-right-4 duration-300">
-                                {categoryNames.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                <option value="Uncategorized">Uncategorized</option>
-                            </select>
+                            <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <button 
+                                    onClick={() => handleCycleCategory(-1)} 
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10 transition-colors"
+                                    aria-label="Previous Category"
+                                >
+                                    <ChevronLeft size={20} strokeWidth={2.5} />
+                                </button>
+                                
+                                <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
+                                    className="bg-accent-light/50 border border-accent-ring text-accent-light-text font-bold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block min-w-[160px] p-2 outline-none cursor-pointer">
+                                    {categoryNames.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                    <option value="Uncategorized">Uncategorized</option>
+                                </select>
+                                
+                                <button 
+                                    onClick={() => handleCycleCategory(1)} 
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10 transition-colors"
+                                    aria-label="Next Category"
+                                >
+                                    <ChevronRight size={20} strokeWidth={2.5} />
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
