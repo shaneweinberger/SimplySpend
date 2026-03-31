@@ -232,6 +232,7 @@ export default function AIProcessing() {
     const [isReprocessing, setIsReprocessing] = useState(false);
     const [loadingFiles, setLoadingFiles] = useState(false);
     const [hasUploadedFiles, setHasUploadedFiles] = useState(false);
+    const [isAddingDefaults, setIsAddingDefaults] = useState(false);
 
     // ── Fetch data on mount ──────────────────────────────────────────────────
     useEffect(() => {
@@ -275,6 +276,40 @@ export default function AIProcessing() {
     // ═══════════════════════════════════════════════════════════════════════════
     // CATEGORIES CRUD
     // ═══════════════════════════════════════════════════════════════════════════
+
+    const handleAddDefaultCategories = async () => {
+        setIsAddingDefaults(true);
+        setError(null);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const defaults = [
+                'Groceries', 'Dining Out', 'Utilities', 'Pharmacy', 'Gas',
+                'Rent / Mortgage', 'Personal Care', 'Entertainment', 'Transportation',
+                'Insurance', 'Healthcare', 'Shopping', 'Subscriptions'
+            ];
+
+            const updates = defaults.map((name, i) => ({
+                name,
+                user_id: user.id,
+                color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                order_index: i
+            }));
+
+            const { data, error } = await supabase
+                .from('user_categories')
+                .insert(updates)
+                .select();
+            
+            if (error) throw error;
+            
+            setCategories(prev => [...prev, ...data]);
+            setToast({ message: 'Default categories added successfully.', type: 'success' });
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsAddingDefaults(false);
+        }
+    };
 
     const handleAddCategory = async (e) => {
         e.preventDefault();
@@ -822,7 +857,17 @@ export default function AIProcessing() {
 
                             {/* Category list */}
                             {categories.length === 0 ? (
-                                <p className="text-xs text-slate-400 py-4 text-center">No categories yet.</p>
+                                <div className="text-center py-6 space-y-3">
+                                    <p className="text-xs text-slate-400">No categories yet.</p>
+                                    <button
+                                        onClick={handleAddDefaultCategories}
+                                        disabled={isAddingDefaults}
+                                        className="px-4 py-2 text-xs font-bold bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50 shadow-sm"
+                                    >
+                                        {isAddingDefaults ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                                        Add Default Categories
+                                    </button>
+                                </div>
                             ) : (
                                 <div className="space-y-0.5 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
                                     {categories.map((cat, index) => (
