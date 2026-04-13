@@ -89,6 +89,7 @@ export default function Analysis() {
 
     const [transactions, setTransactions] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editDrafts, setEditDrafts] = useState({});
@@ -171,8 +172,26 @@ export default function Analysis() {
 
     const fetchData = async () => {
         setLoading(true);
-        await Promise.all([fetchTransactions(), fetchCategories()]);
+        await Promise.all([fetchTransactions(), fetchCategories(), fetchAccounts()]);
         setLoading(false);
+    };
+
+    const fetchAccounts = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('user_accounts')
+                .select('account_name')
+                .eq('user_id', user.id)
+                .order('account_name');
+
+            if (error) throw error;
+            setAccounts(data ? data.map(d => d.account_name).filter(Boolean) : []);
+        } catch (err) {
+            console.error('Error fetching accounts:', err);
+        }
     };
 
     const fetchTransactions = async () => {
@@ -273,7 +292,7 @@ export default function Analysis() {
         let value = '';
 
         if (field === 'amount') operator = 'gt';
-        if (field === 'transaction_method') {
+        if (field === 'transaction_account') {
             operator = 'is';
             value = [];
         }
@@ -345,7 +364,7 @@ export default function Analysis() {
                     if (operator === 'includes' && !desc.includes(val)) return false;
                 }
 
-                if (field === 'transaction_method') {
+                if (field === 'transaction_account') {
                     const type = (txValue || '').toLowerCase();
                     const valArray = Array.isArray(value) ? value : [value];
                     if (valArray.length === 0) continue;
@@ -849,7 +868,7 @@ export default function Analysis() {
                                     </div>
                                     {[
                                         { field: 'description', label: 'Description', icon: Search },
-                                        { field: 'transaction_method', label: 'Account', icon: Filter },
+                                        { field: 'transaction_account', label: 'Account', icon: Filter },
                                         { field: 'category', label: 'Category', icon: Tag },
                                         { field: 'amount', label: 'Amount', icon: ArrowUpDown }
                                     ].map(opt => (
@@ -924,7 +943,7 @@ export default function Analysis() {
                                 className="flex items-center gap-0 bg-white border border-slate-200 rounded-lg shadow-sm animate-in slide-in-from-left duration-200"
                             >
                                 <div className="pl-3 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-tighter">
-                                    {filter.field === 'transaction_method' ? 'Type' : filter.field}:
+                                    {filter.field === 'transaction_account' ? 'Account' : filter.field}:
                                 </div>
                                 <div className="flex items-center">
                                     {/* Operator Select */}
@@ -956,7 +975,7 @@ export default function Analysis() {
 
                                     {/* Value Input */}
                                     <div className="border-l border-slate-100 flex items-center relative">
-                                        {filter.field === 'transaction_method' || filter.field === 'category' ? (
+                                        {filter.field === 'transaction_account' || filter.field === 'category' ? (
                                             <>
                                                 <button
                                                     onClick={(e) => {
@@ -980,7 +999,7 @@ export default function Analysis() {
                                                         className="absolute top-full left-0 mt-1 w-48 bg-surface-card rounded-xl border border-divider shadow-xl z-[60] py-2 animate-in zoom-in-95 duration-200 max-h-64 overflow-y-auto"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        {(filter.field === 'transaction_method' ? ['credit', 'debit'] : ['Uncategorized', ...categoryNames]).map(opt => {
+                                                        {(filter.field === 'transaction_account' ? accounts : ['Uncategorized', ...categoryNames]).map(opt => {
                                                             const isSelected = filter.value.some(v => v.toLowerCase() === opt.toLowerCase());
                                                             return (
                                                                 <label
