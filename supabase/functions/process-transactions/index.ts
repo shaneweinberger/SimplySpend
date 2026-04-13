@@ -118,7 +118,7 @@ serve(async (req: { method: string; }) => {
             console.log(`[3] Prepared ${transactionsToClassify.length} transactions for user ${userId}`);
 
             // C. Construct Prompt
-            const transactionList = transactionsToClassify.map((t: { id: any; description: any; amount: any; }) => ({ id: t.id, description: t.description, amount: t.amount }));
+            const transactionList = transactionsToClassify.map((t: { id: any; description: any; amount: any; date: any; }) => ({ id: t.id, description: t.description, amount: t.amount, date: t.date }));
             console.log(`[3.1] Sending ${transactionList.length} transactions to AI (approx payload size: ${JSON.stringify(transactionList).length} chars)`);
 
             const fullPrompt = `
@@ -137,7 +137,7 @@ serve(async (req: { method: string; }) => {
         3. Do not create new categories. Use the provided list.
 
         Transactions to Categorize:
-        ${JSON.stringify(transactionsToClassify.map((t: { id: any; description: any; amount: any; }) => ({ id: t.id, description: t.description, amount: t.amount })))}
+        ${JSON.stringify(transactionList)}
 
         Output a JSON array where each object has:
         - uuid: (the transaction id provided)

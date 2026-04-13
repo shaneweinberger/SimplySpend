@@ -678,12 +678,27 @@ export default function AIProcessing() {
             // 1. Delete silver transactions for selected files
             for (const fileId of fileIds) {
                 if (abortSignal.cancelled) { setToast({ message: 'Processing cancelled.', type: 'error' }); return; }
-                const { error: silverError } = await supabase
-                    .from('silver_transactions')
-                    .delete()
+                
+                const { data: bronzeTx, error: fetchError } = await supabase
+                    .schema('bronze')
+                    .from('transactions')
+                    .select('id')
                     .eq('user_id', userId)
                     .eq('file_id', fileId);
-                if (silverError) throw new Error(`Failed to clear silver for file ${fileId}: ${silverError.message}`);
+                    
+                if (fetchError) throw new Error(`Failed to fetch transactions for file ${fileId}: ${fetchError.message}`);
+                
+                const bronzeIds = bronzeTx.map(tx => tx.id);
+
+                if (bronzeIds.length > 0) {
+                    const { error: silverError } = await supabase
+                        .from('silver_transactions')
+                        .delete()
+                        .eq('user_id', userId)
+                        .in('bronze_id', bronzeIds);
+
+                    if (silverError) throw new Error(`Failed to clear silver for file ${fileId}: ${silverError.message}`);
+                }
             }
 
             // 2. Reset bronze status to 'pending' for selected files
