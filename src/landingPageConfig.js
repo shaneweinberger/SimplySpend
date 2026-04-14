@@ -9,7 +9,7 @@ export const landingPageConfig = {
     },
     hero: {
         title: "Personal Finance Tracking\nAutomated With Finsight.",
-        subtitle: "Stop wrestling with messy speadsheets. FinSight uses AI to clean, categorize, and analyze your spending automatically, so you don't have to.",
+        subtitle: "Stop wrestling with messy spreadsheets. FinSight uses AI to clean, categorize, and analyze your spending automatically, so you don't have to.",
         // Adjust these to tweak the positioning of the right-side images
         baseImageStyles: "top-10 right-0 w-4/5 transform translate-x-4 translate-y-8 rotate-3",
         overlapImageStyles: "top-[350px] left-0 w-3/4 transform -translate-x-8 -rotate-2",
@@ -40,31 +40,26 @@ export const landingPageConfig = {
             image: "/feature-screenshots/breakdown-sc.png"
         }
     ],
-    howItWorks: {
-        title: "How It Works",
-        subtitle: "Transform your finances in four simple, secure steps.",
-        sectionPadding: "pt-32",
-        timelineOffset: "mt-24",
-        steps: [
+    securitySection: {
+        title: "Your Data. Your Control.",
+        subtitle: "Finsight never connects to your bank accounts.\nYou control exactly what data enters the platform.",
+        sectionPadding: "pt-16",
+        features: [
             {
-                number: "1",
-                title: "1. Upload Transactions",
-                description: "Upload a CSV file of your transaction history exported from your bank."
+                title: "No Bank Integration",
+                description: "Finsight never connects to your bank accounts and does not use aggregators like Plaid. Your credentials are never requested or stored."
             },
             {
-                number: "2",
-                title: "2. AI Categorization",
-                description: "Transactions are processed by AI using your custom categories and rules."
+                title: "Complete Data Control",
+                description: "Your data enters Finsight only when you upload a CSV export from your bank. Nothing is automatically synced."
             },
             {
-                number: "3",
-                title: "3. Secure Storage",
-                description: "Cleaned transactions are securely stored for editing, tracking, and analysis."
+                title: "Encrypted Storage",
+                description: "Transaction data is stored in a secure Supabase PostgreSQL database featuring TLS encryption in transit and AES-256 encryption at rest."
             },
             {
-                number: "4",
-                title: "4. Insights & Analysis",
-                description: "Visualizations and models turn your data into clear spending insights."
+                title: "Minimal Data Stored",
+                description: "Finsight only stores the data required for analysis: Transaction Date, Description, and Amount. No account numbers or balances."
             }
         ]
     },
