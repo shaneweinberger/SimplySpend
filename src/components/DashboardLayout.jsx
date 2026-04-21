@@ -81,7 +81,7 @@ export default function DashboardLayout() {
                 <Sidebar user={user} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
                 {/* Main Content Area */}
-                <div className={`flex-1 p-4 overflow-y-auto h-screen transition-all duration-300 relative ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
+                <div className={`flex-1 overflow-y-auto h-screen transition-all duration-300 relative ${isCollapsed ? 'ml-20' : 'ml-64'} ${['/dashboard/feedback', '/dashboard/settings', '/dashboard/upgrade'].includes(location.pathname) ? 'bg-[#212121]' : 'p-4 bg-slate-50'}`}>
                     
                     {isOnboarding && (
                         <div className="mb-4 w-full animate-fade-in">

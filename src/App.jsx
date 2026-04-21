@@ -10,6 +10,9 @@ import Processing from './components/dashboard/Processing';
 import AIProcessing from './components/dashboard/AIProcessing';
 import Budgeting from './components/dashboard/Budgeting';
 import GettingStarted from './components/dashboard/GettingStarted';
+import Feedback from './components/dashboard/Feedback';
+import Settings from './components/dashboard/Settings';
+import UpgradePlan from './components/dashboard/UpgradePlan';
 import ThemeProvider from './components/ThemeProvider';
 
 function App() {
@@ -27,6 +30,9 @@ function App() {
             <Route path="budgeting" element={<Budgeting />} />
             <Route path="processing" element={<Processing />} />
             <Route path="ai-processing" element={<AIProcessing />} />
+            <Route path="feedback" element={<Feedback />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="upgrade" element={<UpgradePlan />} />
           </Route>
         </Routes>
       </Router>

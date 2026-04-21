@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database, Wallet, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database, Wallet, HelpCircle, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { theme } from '../theme';
 import peanutLove from '../assets/peanut_love.jpg';
-import SettingsModal from './dashboard/SettingsModal';
 
 // Helper component for hover state
 function SidebarLink({ item, isCollapsed, variant = 'primary' }) {
@@ -62,7 +61,6 @@ function DropdownItem({ icon, label, onClick, className }) {
 
 export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isProfileHovered, setIsProfileHovered] = useState(false);
     const [isToggleHovered, setIsToggleHovered] = useState(false);
     const [showSecretModal, setShowSecretModal] = useState(false);
@@ -214,16 +212,17 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
                             <DropdownItem
                                 icon={<Settings size={16} />}
                                 label="Settings"
-                                onClick={() => {
-                                    setIsSettingsOpen(true);
-                                    setIsUserMenuOpen(false);
-                                }}
+                                onClick={() => { navigate('/dashboard/settings'); setIsUserMenuOpen(false); }}
                             />
-                            <DropdownItem icon={<Zap size={16} />} label="Upgrade Plan" />
                             <DropdownItem
-                                icon={<AlertTriangle size={16} />}
-                                label="Report a Bug / Feature"
-                                onClick={() => window.open('https://docs.google.com/spreadsheets/d/136YRamtpHj4APX6x8WxDVNcAYahn4fFEMnfQd4y0w6c/edit?usp=sharing', '_blank')}
+                                icon={<Zap size={16} />}
+                                label="Upgrade Plan"
+                                onClick={() => { navigate('/dashboard/upgrade'); setIsUserMenuOpen(false); }}
+                            />
+                            <DropdownItem
+                                icon={<MessageSquare size={16} />}
+                                label="Submit Feedback"
+                                onClick={() => { navigate('/dashboard/feedback'); setIsUserMenuOpen(false); }}
                             />
                             <DropdownItem
                                 icon={<LogOut size={16} />}
@@ -286,12 +285,6 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
                     </div>
                 </div>
             )}
-            {/* User Settings Modal */}
-            <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                user={user}
-            />
         </div>
     );
 }
