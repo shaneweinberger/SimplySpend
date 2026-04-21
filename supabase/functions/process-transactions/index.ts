@@ -10,6 +10,66 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// ── Structured Output Schema ──────────────────────────────────────────────────
+// Forces Gemini to respond with valid JSON matching this shape every time.
+// Eliminates the need for regex parsing / markdown stripping workarounds,
+// and saves ~50-100 tokens that would otherwise go to plain-text format instructions.
+// Note: We use string literals ("ARRAY", "OBJECT", "STRING") instead of SchemaType enums
+// because the enum export doesn't resolve reliably through esm.sh in the Deno runtime.
+const responseSchema = {
+    type: "ARRAY",
+    items: {
+        type: "OBJECT",
+        properties: {
+            uuid: {
+                type: "STRING",
+                description: "The transaction id provided in the input",
+            },
+            final_category: {
+                type: "STRING",
+                description: "The selected category from the user's category list, or 'delete' if a rule says to remove it",
+            },
+            final_description: {
+                type: "STRING",
+                description: "Cleaned up merchant name, removing noise like store numbers or transaction IDs",
+            },
+        },
+        required: ["uuid", "final_category", "final_description"],
+    },
+};
+
+// ── Helper: compute the start of the current period window ───────────────────
+function getPeriodStart(period: string): string {
+    const now = new Date();
+    if (period === 'daily') {
+        // Start of today (midnight UTC)
+        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+    } else if (period === 'weekly') {
+        // Start of the current week (Sunday, UTC)
+        const dayOfWeek = now.getUTCDay(); // 0 = Sunday
+        const startOfWeek = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayOfWeek));
+        return startOfWeek.toISOString();
+    } else {
+        // 'monthly' — start of current month
+        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    }
+}
+
+// ── Helper: compute a human-readable reset date string ───────────────────────
+function getResetAt(period: string): string {
+    const now = new Date();
+    let reset: Date;
+    if (period === 'daily') {
+        reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    } else if (period === 'weekly') {
+        const dayOfWeek = now.getUTCDay();
+        reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + (7 - dayOfWeek)));
+    } else {
+        reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    }
+    return reset.toISOString();
+}
+
 serve(async (req: { method: string; }) => {
     // Handle CORS preflight requests via OPTIONS
     if (req.method === 'OPTIONS') {
@@ -30,18 +90,32 @@ serve(async (req: { method: string; }) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // Structured output config — guarantees valid JSON, saves format-instruction tokens
+    const generationConfig = {
+        responseMimeType: "application/json",
+        responseSchema,
+    };
+
+    // Primary model + fallback for when the primary is overloaded
+    const MODELS = [
+        { name: "gemini-2.5-flash", instance: genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig }) },
+        { name: "gemini-2.0-flash", instance: genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig }) },
+    ];
+    const MAX_RETRIES = 3;
 
     console.log("[1] Clients initialized");
 
     try {
         // 2. Fetch Pending Transactions
+        // Batch size increased to 150: the fixed prompt cost (base prompt + categories + rules)
+        // is amortised over more transactions, making each item cheaper per-token on average.
         const { data: transactions, error: txError } = await supabase
             .schema("bronze")
             .from("transactions")
             .select("*")
             .eq("status", "pending")
-            .limit(50); // Process in batches
+            .limit(150);
 
         if (txError) throw txError;
         console.log(`[2] Found ${transactions.length} pending transactions`);
@@ -67,7 +141,49 @@ serve(async (req: { method: string; }) => {
         for (const userId of Object.keys(txByUser)) {
             const userTxs = txByUser[userId];
 
-            // A. Fetch Context
+            // ── A. Token Limit Pre-flight Check ──────────────────────────────
+            // Fetch profile to check if this user has a token limit configured.
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("token_limit, limit_period")
+                .eq("id", userId)
+                .single();
+
+            if (profile?.token_limit != null && profile?.limit_period) {
+                const periodStart = getPeriodStart(profile.limit_period);
+
+                // Sum all tokens used by this user within the current period window.
+                // No counter to reset — the window shifts automatically as time passes.
+                const { data: usageData } = await supabase
+                    .from("api_usage_logs")
+                    .select("total_tokens")
+                    .eq("user_id", userId)
+                    .gte("created_at", periodStart);
+
+                const tokensUsedThisPeriod = (usageData || []).reduce(
+                    (sum: number, row: { total_tokens: number }) => sum + (row.total_tokens || 0),
+                    0
+                );
+
+                console.log(`[2.1] User ${userId} has used ${tokensUsedThisPeriod} / ${profile.token_limit} tokens this ${profile.limit_period}`);
+
+                if (tokensUsedThisPeriod >= profile.token_limit) {
+                    const resetAt = getResetAt(profile.limit_period);
+                    console.log(`[2.2] User ${userId} token limit exceeded. Reset at ${resetAt}`);
+                    return new Response(
+                        JSON.stringify({
+                            error: "TOKEN_LIMIT_EXCEEDED",
+                            period: profile.limit_period,
+                            tokensUsed: tokensUsedThisPeriod,
+                            tokenLimit: profile.token_limit,
+                            resetAt,
+                        }),
+                        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                    );
+                }
+            }
+
+            // ── B. Fetch Context (categories, rules, base prompt) ─────────────
             const [promptsRes, rulesRes, categoriesRes] = await Promise.all([
                 supabase.from("llm_prompts").select("prompt_text").eq("is_active", true).single(),
                 supabase.from("user_rules").select("*").eq("user_id", userId).eq("is_active", true),
@@ -117,8 +233,15 @@ serve(async (req: { method: string; }) => {
 
             console.log(`[3] Prepared ${transactionsToClassify.length} transactions for user ${userId}`);
 
-            // C. Construct Prompt
-            const transactionList = transactionsToClassify.map((t: { id: any; description: any; amount: any; date: any; }) => ({ id: t.id, description: t.description, amount: t.amount, date: t.date }));
+            // ── C. Construct Prompt ──────────────────────────────────────────
+            // Note: We no longer include verbose output-format instructions at the end —
+            // the responseSchema passed to the model handles that more efficiently.
+            const transactionList = transactionsToClassify.map((t: { id: any; description: any; amount: any; date: any; }) => ({
+                id: t.id,
+                description: t.description,
+                amount: t.amount,
+                date: t.date
+            }));
             console.log(`[3.1] Sending ${transactionList.length} transactions to AI (approx payload size: ${JSON.stringify(transactionList).length} chars)`);
 
             const fullPrompt = `
@@ -138,50 +261,101 @@ serve(async (req: { method: string; }) => {
 
         Transactions to Categorize:
         ${JSON.stringify(transactionList)}
-
-        Output a JSON array where each object has:
-        - uuid: (the transaction id provided)
-        - final_category: (selected category or "delete")
-        - final_description: (cleaned up merchant name)
       `;
 
-            // C. Call Gemini
+            // ── D. Call Gemini with retry + fallback ────────────────────────
+            // Strategy: try primary model (gemini-2.5-flash) up to 3 times with
+            // exponential backoff on 503/429 errors. If all attempts fail, switch
+            // to fallback model (gemini-2.0-flash) and retry 3 more times.
             console.log(`[4] Calling Gemini for user ${userId}...`);
             let response;
+            let modelUsed = MODELS[0].name;
+
+            const isRetryable = (err: any): boolean => {
+                const msg = err?.message || '';
+                return msg.includes('503') || msg.includes('429') || msg.includes('Service Unavailable') || msg.includes('Quota');
+            };
+
+            let succeeded = false;
+            for (const { name: currentModelName, instance: currentModel } of MODELS) {
+                if (succeeded) break;
+
+                for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                    try {
+                        const startTime = Date.now();
+                        console.log(`[4.${currentModelName}] Attempt ${attempt}/${MAX_RETRIES}...`);
+                        const result = await currentModel.generateContent(fullPrompt);
+                        response = await result.response;
+                        modelUsed = currentModelName;
+                        succeeded = true;
+                        console.log(`[4.1] ${currentModelName} responded in ${Date.now() - startTime}ms (attempt ${attempt})`);
+                        break;
+                    } catch (geminiErr: any) {
+                        console.error(`[4.ERR] ${currentModelName} attempt ${attempt} failed: ${geminiErr.message}`);
+
+                        if (!isRetryable(geminiErr) || attempt === MAX_RETRIES) {
+                            // Non-retryable error or exhausted retries for this model
+                            console.error(`[4.ERR] ${currentModelName} exhausted — ${attempt === MAX_RETRIES ? 'max retries reached' : 'non-retryable error'}`);
+                            break;
+                        }
+
+                        // Exponential backoff: 1s, 2s, 4s
+                        const waitMs = Math.pow(2, attempt - 1) * 1000;
+                        console.log(`[4.RETRY] Waiting ${waitMs}ms before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, waitMs));
+                    }
+                }
+            }
+
+            if (!succeeded || !response) {
+                throw new Error(`All Gemini models failed after retries. The API may be temporarily unavailable. Please try again in a minute.`);
+            }
+
+            // ── E. Log Token Usage ───────────────────────────────────────────
+            // Extract usage metadata and persist to api_usage_logs.
+            // This is the source of truth for the per-period limit calculation above.
             try {
-                const startTime = Date.now();
-                const result = await model.generateContent(fullPrompt);
-                response = await result.response;
-                console.log(`[4.1] Gemini AI responded in ${Date.now() - startTime}ms`);
-            } catch (geminiErr: any) {
-                console.error(`[4.ERR] Gemini API call failed: ${geminiErr.message}`);
-                console.error(`[4.ERR] Full error details: ${JSON.stringify(geminiErr)}`);
-                throw new Error(`Gemini API connection failed: ${geminiErr.message}`);
+                const usage = response.usageMetadata;
+                if (usage) {
+                    const { error: logError } = await supabase.from("api_usage_logs").insert({
+                        user_id: userId,
+                        prompt_tokens: usage.promptTokenCount ?? 0,
+                        completion_tokens: usage.candidatesTokenCount ?? 0,
+                        total_tokens: usage.totalTokenCount ?? 0,
+                        model_name: modelUsed,
+                    });
+                    if (logError) {
+                        // Non-fatal: log the error but don't halt processing
+                        console.error(`[5.ERR] Failed to log token usage: ${logError.message}`);
+                    } else {
+                        console.log(`[5] Logged usage: prompt=${usage.promptTokenCount}, completion=${usage.candidatesTokenCount}, total=${usage.totalTokenCount}`);
+                    }
+                } else {
+                    console.warn(`[5.WARN] No usageMetadata in Gemini response for user ${userId}`);
+                }
+            } catch (logErr: any) {
+                // Non-fatal: don't block transaction processing if logging fails
+                console.error(`[5.ERR] Exception while logging usage: ${logErr.message}`);
             }
 
-            let text = response.text();
-            console.log(`[5] Gemini responded, parsing...`);
-
-            // Attempt to extract JSON if wrapped in markdown blocks
-            if (text.startsWith("```json")) {
-                text = text.replace(/```json\n?/, "").replace(/```$/, "");
-            } else if (text.startsWith("```")) {
-                text = text.replace(/```\n?/, "").replace(/```$/, "");
-            }
+            // ── F. Parse Response ────────────────────────────────────────────
+            // With structured outputs, response.text() is guaranteed to be valid JSON —
+            // no markdown stripping or try/catch JSON.parse needed in the happy path.
+            const text = response.text();
+            console.log(`[6] Gemini responded, parsing...`);
 
             let processedData;
             try {
                 processedData = JSON.parse(text);
             } catch (e) {
                 console.error("Failed to parse Gemini response for user " + userId, text);
-                // Mark these as error? Or keep pending? Let's mark error for now to avoid loop.
                 await supabase.schema("bronze").from("transactions")
                     .update({ status: "error", error_message: "LLM Parsing Failed" })
                     .in("id", userTxs.map((t: { id: any; }) => t.id));
                 continue;
             }
 
-            // D. Prepare Batched Operations
+            // ── G. Prepare Batched Operations ────────────────────────────────
             const silverUpserts: any[] = [];
             const bronzeProcessedIds: string[] = [];
             const bronzeDeleteIds: string[] = [];
@@ -215,17 +389,17 @@ serve(async (req: { method: string; }) => {
                 }
             }
 
-            // Also mark any transactions that Gemini completely skipped as 'processed' (ignored)
-            // to prevent them from clogging the pipeline in future loops.
+            // Mark any transactions Gemini skipped as 'processed' (ignored)
+            // to prevent them clogging the pipeline on future loops.
             const respondedIds = new Set(processedData.map((d: any) => d.uuid));
             const omittedIds = userTxs.filter((tx: any) => !respondedIds.has(tx.id)).map((tx: any) => tx.id);
             if (omittedIds.length > 0) {
-                console.log(`[6] AI omitted ${omittedIds.length} transactions. Marking as processed (ignored).`);
+                console.log(`[7] AI omitted ${omittedIds.length} transactions. Marking as processed (ignored).`);
                 bronzeProcessedIds.push(...omittedIds);
             }
 
-            // E. Execute Batched Operations
-            console.log(`[7] Batch upserting ${silverUpserts.length} items to silver...`);
+            // ── H. Execute Batched DB Operations ────────────────────────────
+            console.log(`[8] Batch upserting ${silverUpserts.length} items to silver...`);
             if (silverUpserts.length > 0) {
                 const { error: silverError } = await supabase
                     .from("silver_transactions")
@@ -234,10 +408,8 @@ serve(async (req: { method: string; }) => {
                 if (silverError) {
                     console.error("Batch Silver upsert failed", silverError);
                     errorMsg = silverError.message;
-                    // Add all IDs associated with silver updates to the error pool
                     const silverIds = silverUpserts.map(u => u.bronze_id);
                     bronzeErrorIds.push(...silverIds);
-                    // Remove them from processed pool so we don't try to mark them as successful
                     const errorSet = new Set(silverIds);
                     const filteredProcessed = bronzeProcessedIds.filter(id => !errorSet.has(id));
                     bronzeProcessedIds.length = 0;
@@ -245,11 +417,10 @@ serve(async (req: { method: string; }) => {
                 }
             }
 
-            console.log(`[8] Database updates: del=${bronzeDeleteIds.length}, err=${bronzeErrorIds.length}, ok=${bronzeProcessedIds.length}`);
+            console.log(`[9] Database updates: del=${bronzeDeleteIds.length}, err=${bronzeErrorIds.length}, ok=${bronzeProcessedIds.length}`);
 
-            // Perform updates independently
             if (bronzeDeleteIds.length > 0) {
-                console.log(`[8.1] Physically deleting ${bronzeDeleteIds.length} items from bronze`);
+                console.log(`[9.1] Physically deleting ${bronzeDeleteIds.length} items from bronze`);
                 const { error: bronzeDeleteError } = await supabase.schema("bronze").from("transactions")
                     .delete()
                     .in('id', bronzeDeleteIds);
@@ -257,14 +428,14 @@ serve(async (req: { method: string; }) => {
             }
 
             if (bronzeErrorIds.length > 0) {
-                console.log(`[8.2] Marking ${bronzeErrorIds.length} as ERROR`);
+                console.log(`[9.2] Marking ${bronzeErrorIds.length} as ERROR`);
                 await supabase.schema("bronze").from("transactions")
                     .update({ status: 'error', error_message: errorMsg || 'Batch update failed' })
                     .in('id', bronzeErrorIds);
             }
 
             if (bronzeProcessedIds.length > 0) {
-                console.log(`[8.3] Marking ${bronzeProcessedIds.length} as PROCESSED`);
+                console.log(`[9.3] Marking ${bronzeProcessedIds.length} as PROCESSED`);
                 const { error: bronzeUpdateError } = await supabase.schema("bronze").from("transactions")
                     .update({ status: 'processed' })
                     .in('id', bronzeProcessedIds);

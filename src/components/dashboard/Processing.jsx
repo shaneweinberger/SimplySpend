@@ -12,6 +12,7 @@ import {
     Plus,
     X,
     Trash2,
+    Lock,
 } from 'lucide-react';
 import { useProcessing } from '../../lib/ProcessingContext';
 
@@ -24,6 +25,11 @@ export default function Processing() {
     const [status, setStatus] = useState({ type: '', message: '' });
     const fileInputRef = useRef(null);
     const { startProcessing, stopProcessing, getAbortSignal } = useProcessing();
+
+    // ── Token limit blocked state ─────────────────────────────────────────────
+    // Set when the Edge Function returns TOKEN_LIMIT_EXCEEDED (HTTP 429).
+    // Shape: { period: 'monthly'|'weekly'|'daily', resetAt: ISO string } | null
+    const [tokenLimitInfo, setTokenLimitInfo] = useState(null);
 
     // ── Account state ─────────────────────────────────────────────────────────
     const [savedAccounts, setSavedAccounts] = useState([]);
@@ -227,7 +233,40 @@ export default function Processing() {
                 const { data, error } = await supabase.functions.invoke('process-transactions', {
                     headers: { Authorization: `Bearer ${session.access_token}` }
                 });
-                if (error) throw error;
+
+                // ── Token limit check ────────────────────────────────────────
+                // The Edge Function returns a structured TOKEN_LIMIT_EXCEEDED payload
+                // (HTTP 429) when the user has consumed their configured token allowance
+                // for the current period. We surface this as a dedicated blocked state
+                // rather than a generic error, so the user gets a clear explanation.
+                if (error) {
+                    // Parse the response body ONCE (it can only be read once from the stream)
+                    let parsedBody = null;
+                    try {
+                        if (error.context?.json) {
+                            parsedBody = await error.context.json();
+                        }
+                    } catch { /* ignore parse failures */ }
+
+                    if (parsedBody?.error === 'TOKEN_LIMIT_EXCEEDED') {
+                        setTokenLimitInfo({
+                            period: parsedBody.period,
+                            resetAt: parsedBody.resetAt,
+                            tokensUsed: parsedBody.tokensUsed,
+                            tokenLimit: parsedBody.tokenLimit,
+                        });
+                        setStatus({ type: '', message: '' });
+                        return;
+                    }
+
+                    // Attach the parsed body so the catch block can read the real error
+                    // (the Response stream is already consumed, so we can't read it again)
+                    const enhancedError = new Error(
+                        parsedBody?.error || parsedBody?.details || error.message || 'Edge Function returned a non-2xx status code'
+                    );
+                    throw enhancedError;
+                }
+            //...continued
                 if (Array.isArray(data)) {
                     const n = data.reduce((a, c) => a + (c.processedCount || 0), 0);
                     totalProcessed += n; hasMore = n > 0;
@@ -240,9 +279,7 @@ export default function Processing() {
             if (fileInputRef.current) fileInputRef.current.value = '';
             fetchHistory();
         } catch (err) {
-            let msg = err.message;
-            if (err.context?.json) { try { const j = await err.context.json(); if (j?.error) msg = j.error; } catch { } }
-            setStatus({ type: 'error', message: `Processing failed: ${msg}` });
+            setStatus({ type: 'error', message: `Processing failed: ${err.message}` });
         } finally {
             setProcessing(false);
             stopProcessing();
@@ -259,7 +296,9 @@ export default function Processing() {
         } catch (err) { console.error('Delete error:', err); }
     };
 
-    const canRun = !!pendingFile && !!selectedAccount && !isAddingNewAccount && !processing;
+    // Block processing if the user has hit their token limit for the current period
+    const isTokenLimitBlocked = tokenLimitInfo != null;
+    const canRun = !!pendingFile && !!selectedAccount && !isAddingNewAccount && !processing && !isTokenLimitBlocked;
 
     // ─────────────────────────────────────────────────────────────────────────
     return (
@@ -270,6 +309,42 @@ export default function Processing() {
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Transaction Uploads</h1>
                 <p className="text-slate-500 mt-1">Upload CSV files and run AI categorization.</p>
             </div>
+
+            {/* ── Token Limit Blocked Banner ────────────────────────────── */}
+            {isTokenLimitBlocked && (() => {
+                const periodLabel = tokenLimitInfo.period
+                    ? tokenLimitInfo.period.charAt(0).toUpperCase() + tokenLimitInfo.period.slice(1)
+                    : 'Usage';
+                const resetDate = tokenLimitInfo.resetAt
+                    ? new Date(tokenLimitInfo.resetAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : null;
+                return (
+                    <div className="mb-6 flex items-start gap-3.5 px-5 py-4 rounded-xl border border-amber-200 bg-amber-50">
+                        <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                            <Lock size={15} className="text-amber-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-amber-800">
+                                {periodLabel} processing limit reached
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                                Your account has reached its {tokenLimitInfo.period} AI processing limit
+                                {tokenLimitInfo.tokensUsed != null && tokenLimitInfo.tokenLimit != null
+                                    ? ` (${tokenLimitInfo.tokensUsed.toLocaleString()} / ${tokenLimitInfo.tokenLimit.toLocaleString()} tokens used)`
+                                    : ''}
+                                . Processing is paused{resetDate ? ` until ${resetDate}` : ''}.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setTokenLimitInfo(null)}
+                            className="shrink-0 p-1 text-amber-400 hover:text-amber-600 transition-colors rounded"
+                            title="Dismiss"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                );
+            })()}
 
             {/* ── Status banner ────────────────────────────────────────── */}
             {status.message && (
