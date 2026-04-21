@@ -637,70 +637,88 @@ export default function Analysis() {
                     </div>
 
                     {/* Dynamic Filter Inputs */}
-                    <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm min-h-[44px]">
-                        {filterType === 'range' && (
-                            <>
-                                <div className="flex items-center gap-2 px-3">
-                                    <Calendar size={16} className="text-slate-400" />
-                                    <input
-                                        type="date"
-                                        value={localStartDate}
-                                        onChange={(e) => setLocalStartDate(e.target.value)}
-                                        className="text-sm font-medium text-slate-700 outline-none w-32"
-                                    />
-                                </div>
-                                <div className="text-slate-300">|</div>
-                                <div className="flex items-center gap-2 px-3">
-                                    <input
-                                        type="date"
-                                        value={localEndDate}
-                                        onChange={(e) => setLocalEndDate(e.target.value)}
-                                        className="text-sm font-medium text-slate-700 outline-none w-32"
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        {filterType === 'week' && (
-                            <div className="flex items-center gap-3 px-3 min-w-[300px]">
-                                <Calendar size={16} className="text-slate-400" />
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 leading-none">(Monday to Sunday)</span>
-                                    <select
-                                        value={selectedWeek}
-                                        onChange={(e) => setSelectedWeek(e.target.value)}
-                                        className="text-sm font-medium text-slate-700 outline-none bg-transparent w-full cursor-pointer"
-                                    >
-                                        {getWeekOptions().map(w => (
-                                            <option key={w.start} value={w.start}>{w.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-
-                        {filterType === 'month' && (
-                            <div className="flex items-center gap-2 px-3 min-w-[180px]">
-                                <Calendar size={16} className="text-slate-400" />
-                                <select
-                                    value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="text-sm font-medium text-slate-700 outline-none bg-transparent w-full cursor-pointer"
+                    {filterType === 'month' ? (() => {
+                        const monthOptions = getMonthOptions(); // newest first
+                        const currentIndex = monthOptions.findIndex(m => m.value === selectedMonth);
+                        const canGoPrev = currentIndex < monthOptions.length - 1;
+                        const canGoNext = currentIndex > 0;
+                        const currentLabel = monthOptions[currentIndex]?.label ?? selectedMonth;
+                        return (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => canGoPrev && setSelectedMonth(monthOptions[currentIndex + 1].value)}
+                                    disabled={!canGoPrev}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    title="Previous month"
                                 >
-                                    {getMonthOptions().map(m => (
-                                        <option key={m.value} value={m.value}>{m.label}</option>
-                                    ))}
-                                </select>
+                                    <ChevronLeft size={18} strokeWidth={2.5} />
+                                </button>
+                                <div className="flex items-center gap-2 bg-white px-5 py-2 rounded-2xl border border-slate-200 shadow-sm min-h-[44px]">
+                                    <span className="text-sm font-semibold text-slate-700 min-w-[120px] text-center select-none">
+                                        {currentLabel}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => canGoNext && setSelectedMonth(monthOptions[currentIndex - 1].value)}
+                                    disabled={!canGoNext}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    title="Next month"
+                                >
+                                    <ChevronRight size={18} strokeWidth={2.5} />
+                                </button>
                             </div>
-                        )}
+                        );
+                    })() : (
+                        <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm min-h-[44px]">
+                            {filterType === 'range' && (
+                                <>
+                                    <div className="flex items-center gap-2 px-3">
+                                        <Calendar size={16} className="text-slate-400" />
+                                        <input
+                                            type="date"
+                                            value={localStartDate}
+                                            onChange={(e) => setLocalStartDate(e.target.value)}
+                                            className="text-sm font-medium text-slate-700 outline-none w-32"
+                                        />
+                                    </div>
+                                    <div className="text-slate-300">|</div>
+                                    <div className="flex items-center gap-2 px-3">
+                                        <input
+                                            type="date"
+                                            value={localEndDate}
+                                            onChange={(e) => setLocalEndDate(e.target.value)}
+                                            className="text-sm font-medium text-slate-700 outline-none w-32"
+                                        />
+                                    </div>
+                                </>
+                            )}
 
-                        {filterType === 'all' && (
-                            <div className="flex items-center gap-2 px-4 py-1">
-                                <Filter size={16} className="text-accent" />
-                                <span className="text-sm font-semibold text-slate-600">All Transactions</span>
-                            </div>
-                        )}
-                    </div>
+                            {filterType === 'week' && (
+                                <div className="flex items-center gap-3 px-3 min-w-[300px]">
+                                    <Calendar size={16} className="text-slate-400" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 leading-none">(Monday to Sunday)</span>
+                                        <select
+                                            value={selectedWeek}
+                                            onChange={(e) => setSelectedWeek(e.target.value)}
+                                            className="text-sm font-medium text-slate-700 outline-none bg-transparent w-full cursor-pointer"
+                                        >
+                                            {getWeekOptions().map(w => (
+                                                <option key={w.start} value={w.start}>{w.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {filterType === 'all' && (
+                                <div className="flex items-center gap-2 px-4 py-1">
+                                    <Filter size={16} className="text-accent" />
+                                    <span className="text-sm font-semibold text-slate-600">All Transactions</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </header>
 

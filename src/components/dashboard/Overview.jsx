@@ -807,13 +807,6 @@ export default function Overview() {
                     </div>
                 </div>
 
-                {/* ── Pro Tip ──────────────────────────────────────────────────── */}
-                <div className="bg-accent-light/30 border border-accent-light/50 p-4 rounded-xl flex items-center gap-4 shadow-sm">
-                    <Info className="text-accent shrink-0" size={18} />
-                    <p className="text-accent-light-text/60 text-xs font-medium">
-                        Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-accent-light-text">Categories &amp; Rules</button> to customize how your transactions are sorted.
-                    </p>
-                </div>
             </>) : (
                 <div className="bg-surface-card p-10 md:p-14 lg:p-20 rounded-2xl border border-divider shadow-sm flex flex-col items-center justify-center text-center mt-6">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-200">
