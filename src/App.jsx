@@ -9,6 +9,7 @@ import Analysis from './components/dashboard/Analysis';
 import Processing from './components/dashboard/Processing';
 import AIProcessing from './components/dashboard/AIProcessing';
 import Budgeting from './components/dashboard/Budgeting';
+import GettingStarted from './components/dashboard/GettingStarted';
 import ThemeProvider from './components/ThemeProvider';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="/under-construction" element={<UnderConstruction />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Overview />} />
+            <Route path="getting-started" element={<GettingStarted />} />
             <Route path="analysis" element={<Analysis />} />
             <Route path="budgeting" element={<Budgeting />} />
             <Route path="processing" element={<Processing />} />

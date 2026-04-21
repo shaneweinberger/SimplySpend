@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database, Wallet } from 'lucide-react';
+import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database, Wallet, HelpCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { theme } from '../theme';
 import peanutLove from '../assets/peanut_love.jpg';
@@ -109,6 +109,23 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
         { path: '/dashboard/ai-processing', label: 'AI Rules', icon: <Zap size={20} /> },
     ];
 
+    const [helpLabel, setHelpLabel] = useState('Getting Started');
+
+    React.useEffect(() => {
+        const checkStep = () => {
+            const step = parseInt(localStorage.getItem('finsight_onboarding_step') || '1', 10);
+            setHelpLabel(step > 4 ? 'Setup Guide' : 'Getting Started');
+        };
+        checkStep();
+        // Check periodically since it updates from GettingStarted.jsx
+        const interval = setInterval(checkStep, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const helpNavItems = [
+        { path: '/dashboard/getting-started', label: helpLabel, icon: <HelpCircle size={20} /> },
+    ];
+
     return (
         <div
             className={`flex flex-col h-screen fixed left-0 top-0 z-20 transition-all duration-300 border-r ${isCollapsed ? 'w-20' : 'w-64'}`}
@@ -151,21 +168,29 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
             </div>
 
             {/* Navigation */}
-            <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-                {mainNavItems.map((item) => (
-                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
-                ))}
+            <div className="flex-1 py-6 px-3 flex flex-col overflow-y-auto">
+                <div className="space-y-1">
+                    {mainNavItems.map((item) => (
+                        <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
+                    ))}
 
-                {/* Subtle Divider between groups */}
-                <div className={`my-6 border-t border-slate-700/40 transition-all ${isCollapsed ? 'mx-2' : 'mx-4'}`} />
+                    {/* Subtle Divider between groups */}
+                    <div className={`my-6 border-t border-slate-700/40 transition-all ${isCollapsed ? 'mx-2' : 'mx-4'}`} />
 
-                {dataNavItems.map((item) => (
-                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
-                ))}
+                    {dataNavItems.map((item) => (
+                        <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
+                    ))}
 
-                {automationNavItems.map((item) => (
-                    <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
-                ))}
+                    {automationNavItems.map((item) => (
+                        <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="primary" />
+                    ))}
+                </div>
+
+                <div className="mt-auto pt-6 space-y-1">
+                    {helpNavItems.map((item) => (
+                        <SidebarLink key={item.path} item={item} isCollapsed={isCollapsed} variant="secondary" />
+                    ))}
+                </div>
             </div>
 
             {/* User Dropdown */}

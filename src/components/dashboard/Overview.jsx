@@ -82,6 +82,7 @@ export default function Overview() {
     const [categories, setCategories] = useState([]);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [hasFiles, setHasFiles] = useState(true); // Default true to avoid flash
 
     // Top-Level Controls — persisted across in-app navigation via sessionStorage
     const [timeRange, setTimeRange] = useSessionState('overview.timeRange', '6M');
@@ -112,6 +113,15 @@ export default function Overview() {
     // ── Effects ────────────────────────────────────────────────────────────────
     useEffect(() => { fetchData(); }, []);
 
+    // Redirect to Getting Started ONCE if new user (0 uploaded files)
+    useEffect(() => {
+        const hasSeenSetup = localStorage.getItem('finsight_has_seen_setup');
+        if (!loading && !hasFiles && !hasSeenSetup) {
+            localStorage.setItem('finsight_has_seen_setup', 'true');
+            navigate('/dashboard/getting-started', { replace: true });
+        }
+    }, [loading, hasFiles, navigate]);
+
     // Close locked tooltip on outside click
     useEffect(() => {
         const close = () => setLockedTooltip(null);
@@ -129,6 +139,20 @@ export default function Overview() {
     // ── Data fetching ──────────────────────────────────────────────────────────
     const fetchData = async () => {
         setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .schema('bronze')
+                    .from('transactions')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .limit(1);
+                setHasFiles(!!(data && data.length > 0));
+            }
+        } catch (e) {
+            console.error('Error checking files:', e);
+        }
         await Promise.all([fetchTransactions(), fetchCategories(), fetchProfile()]);
         setLoading(false);
     };
@@ -444,65 +468,8 @@ export default function Overview() {
                 </div>
             </header>
 
-            {/* ── Empty state — no transactions yet ───────────────────────── */}
-            {transactions.length === 0 && (
-                <div className="flex flex-col items-center justify-center gap-8 py-16 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Hero message */}
-                    <div className="text-center max-w-2xl">
-                        <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-5">
-                            <LayoutDashboard size={32} className="text-accent opacity-70" />
-                        </div>
-                        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-2">
-                            Welcome {profile?.first_name ? `${profile.first_name} ` : ''}— let's get your finances set up
-                        </h2>
-                        <p className="text-slate-500 text-sm leading-relaxed">
-                            You don't have any transactions yet. Follow these two steps to get started.
-                        </p>
-                    </div>
-
-                    {/* Two action cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                        {/* Step 1 — AI Processing */}
-                        <button
-                            onClick={() => navigate('/dashboard/ai-processing')}
-                            className="group text-left p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-accent hover:shadow-md transition-all duration-200"
-                        >
-                            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-                                <Activity size={20} className="text-accent" />
-                            </div>
-                            <div className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Step 1</div>
-                            <h3 className="text-base font-extrabold text-slate-900 mb-1">Configure Categories & Rules</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed">
-                                Set up your spending categories and AI rules so transactions are automatically sorted when processed.
-                            </p>
-                            <div className="mt-4 text-xs font-bold text-accent flex items-center gap-1 group-hover:gap-2 transition-all">
-                                Go to AI Processing <ArrowUpRight size={12} />
-                            </div>
-                        </button>
-
-                        {/* Step 2 — Upload */}
-                        <button
-                            onClick={() => navigate('/dashboard/processing')}
-                            className="group text-left p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-accent hover:shadow-md transition-all duration-200"
-                        >
-                            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-                                <ArrowUpRight size={20} className="text-accent" />
-                            </div>
-                            <div className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Step 2</div>
-                            <h3 className="text-base font-extrabold text-slate-900 mb-1">Upload & Process Transactions</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed">
-                                Import a CSV from your bank and run AI processing to categorize and clean your transaction data.
-                            </p>
-                            <div className="mt-4 text-xs font-bold text-accent flex items-center gap-1 group-hover:gap-2 transition-all">
-                                Go to Uploads <ArrowUpRight size={12} />
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Main overview content (hidden until transactions exist) ──── */}
-            {transactions.length > 0 && (<>
+            {/* ── Main overview content ──── */}
+            {transactions.length > 0 ? (<>
                 {/* ── Top-Level Controls ──────────────────────────────────────── */}
                 <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-6 px-2 py-1 items-center">
                     <div className="flex flex-wrap items-center gap-6 w-full">
@@ -847,7 +814,23 @@ export default function Overview() {
                         Pro Tip: Update <button onClick={() => navigate('/dashboard/ai-processing')} className="font-bold underline hover:text-accent-light-text">Categories &amp; Rules</button> to customize how your transactions are sorted.
                     </p>
                 </div>
-            </>)}
+            </>) : (
+                <div className="bg-surface-card p-10 md:p-14 lg:p-20 rounded-2xl border border-divider shadow-sm flex flex-col items-center justify-center text-center mt-6">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-200">
+                        <LayoutDashboard size={32} className="text-slate-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-800 mb-2">No active data</h2>
+                    <p className="text-slate-500 max-w-md leading-relaxed text-sm">
+                        You have not successfully uploaded any transactions yet. Head over to tracking setup or upload a file directly to populate this overview.
+                    </p>
+                    <button 
+                        onClick={() => navigate('/dashboard/getting-started')}
+                        className="mt-8 px-6 py-2.5 bg-slate-900 text-white rounded-full font-bold text-sm shadow-md hover:-translate-y-0.5 active:scale-95 transition-all focus:outline-none"
+                    >
+                        Go to Setup
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
