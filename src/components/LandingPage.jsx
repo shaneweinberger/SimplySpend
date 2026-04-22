@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Check, Menu, X, Brain, Shield, Zap, LayoutDashboard, CloudUpload, ShieldCheck, LineChart, Lock, EyeOff, FileSpreadsheet, Database, AlignLeft } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { landingPageConfig } from "../landingPageConfig";
+import { APP_NAME } from '../config';
 
 export default function LandingPage() {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -54,9 +55,9 @@ export default function LandingPage() {
                     {/* Logo */}
                     <div className={`flex items-center gap-2 font-bold text-xl tracking-tight transition-colors duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)]' : 'text-[var(--lp-primary)]'}`}>
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-500 ${isOverDarkSection ? 'bg-[var(--lp-primary-text)] text-[var(--lp-primary)]' : 'bg-[var(--lp-primary)] text-[var(--lp-primary-text)]'}`}>
-                            <span className="text-lg">F</span>
+                            <span className="text-lg">S</span>
                         </div>
-                        FinSight
+                        {APP_NAME}
                     </div>
 
                     {/* Desktop Links */}
@@ -244,8 +245,8 @@ export default function LandingPage() {
                 <div className="max-w-6xl mx-auto w-full grid md:grid-cols-4 gap-12">
                     <div className="col-span-2">
                         <div className="flex items-center gap-2 font-bold text-2xl mb-6 text-[var(--lp-primary)]">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--lp-primary)] text-[var(--lp-primary-text)] flex items-center justify-center">F</div>
-                            Finsight
+                            <div className="w-10 h-10 rounded-xl bg-[var(--lp-primary)] text-[var(--lp-primary-text)] flex items-center justify-center">S</div>
+                            {APP_NAME}
                         </div>
                         <p className="max-w-sm text-[var(--lp-primary)]/70 leading-relaxed text-lg">The intelligent, privacy-focused personal finance tracker for the modern era.</p>
                     </div>

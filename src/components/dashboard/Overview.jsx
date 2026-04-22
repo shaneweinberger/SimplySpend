@@ -115,9 +115,9 @@ export default function Overview() {
 
     // Redirect to Getting Started ONCE if new user (0 uploaded files)
     useEffect(() => {
-        const hasSeenSetup = localStorage.getItem('finsight_has_seen_setup');
+        const hasSeenSetup = localStorage.getItem('simplyspend_has_seen_setup');
         if (!loading && !hasFiles && !hasSeenSetup) {
-            localStorage.setItem('finsight_has_seen_setup', 'true');
+            localStorage.setItem('simplyspend_has_seen_setup', 'true');
             navigate('/dashboard/getting-started', { replace: true });
         }
     }, [loading, hasFiles, navigate]);

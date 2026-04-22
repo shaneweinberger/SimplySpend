@@ -1,6 +1,7 @@
 import React from 'react';
 import { Zap, Check, Lock, Sparkles, MessageSquare, Bot } from 'lucide-react';
 import { theme } from '../../theme';
+import { APP_NAME } from '../../config';
 
 export default function UpgradePlan() {
     return (
@@ -85,7 +86,7 @@ export default function UpgradePlan() {
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-xl font-bold text-white">Finsight Pro</h2>
+                                        <h2 className="text-xl font-bold text-white">{APP_NAME} Pro</h2>
                                         <Sparkles size={16} style={{ color: '#6366f1' }} />
                                     </div>
                                     <p style={{ color: '#9ca3af' }} className="text-sm mt-1">Supercharge your finances with AI.</p>

@@ -13,7 +13,7 @@ export default function GettingStarted() {
     const [expandedStep, setExpandedStep] = useState(1);
 
     useEffect(() => {
-        const saved = localStorage.getItem('finsight_onboarding_step');
+        const saved = localStorage.getItem('simplyspend_onboarding_step');
         if (saved) {
             const step = parseInt(saved, 10);
             setUnlockedStep(step);
@@ -34,7 +34,7 @@ export default function GettingStarted() {
         const next = Math.max(unlockedStep, stepNumber + 1);
         setUnlockedStep(next);
         setExpandedStep(next);
-        localStorage.setItem('finsight_onboarding_step', next.toString());
+        localStorage.setItem('simplyspend_onboarding_step', next.toString());
         
         // Wait for the collapse/expand CSS transition (duration-300) to complete
         // before calculating the final scroll absolute position, otherwise it misaligns.
@@ -274,7 +274,7 @@ export default function GettingStarted() {
                 <p className="text-sm font-medium text-[#034638]/60">
                     {footer.note}
                     {unlockedStep > 1 && (
-                        <button onClick={() => { setUnlockedStep(1); setExpandedStep(1); localStorage.setItem('finsight_onboarding_step', '1'); }} className="ml-4 hover:underline text-[#034638]/40 focus:outline-none">
+                        <button onClick={() => { setUnlockedStep(1); setExpandedStep(1); localStorage.setItem('simplyspend_onboarding_step', '1'); }} className="ml-4 hover:underline text-[#034638]/40 focus:outline-none">
                             {footer.resetLabel}
                         </button>
                     )}

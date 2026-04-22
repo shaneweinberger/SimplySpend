@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { APP_NAME } from '../config';
 import constructionCrane from '../assets/construction_crane.png';
 
 export default function UnderConstruction() {
@@ -31,7 +32,7 @@ export default function UnderConstruction() {
                 </h2>
 
                 <p className="text-slate-600 mb-8 text-lg leading-relaxed">
-                    Sorry, but Finsight is currently under development. <br />
+                    Sorry, but {APP_NAME} is currently under development. <br />
                     Thank you for your interest. <br />
                     We will reach out once we are live!
                 </p>

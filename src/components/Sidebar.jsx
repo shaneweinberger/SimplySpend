@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, PieChart, Upload, Tags, Zap, LogOut, ChevronUp, ChevronDown, User, Settings, AlertTriangle, PanelLeft, Database, Wallet, HelpCircle, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { theme } from '../theme';
+import { APP_NAME } from '../config';
 import peanutLove from '../assets/peanut_love.jpg';
 
 // Helper component for hover state
@@ -111,7 +112,7 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
 
     React.useEffect(() => {
         const checkStep = () => {
-            const step = parseInt(localStorage.getItem('finsight_onboarding_step') || '1', 10);
+            const step = parseInt(localStorage.getItem('simplyspend_onboarding_step') || '1', 10);
             setHelpLabel(step > 4 ? 'Setup Guide' : 'Getting Started');
         };
         checkStep();
@@ -143,10 +144,9 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
                         className={`flex items-center gap-2 font-bold text-xl animate-fade-in-up whitespace-nowrap overflow-hidden ${user?.email === 'emmarlevine@gmail.com' ? 'cursor-pointer' : ''}`}
                         style={{ color: theme.sidebar.logoText }}
                     >
-                        <div className="w-8 h-8 rounded-lg bg-white text-slate-900 flex items-center justify-center shrink-0">F</div>
-                        <div className="flex flex-col leading-tight">
-                            <span>FinSight</span>
-                            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-emerald-400 -mt-0.5 ml-0.5">Beta</span>
+                        <div className="w-8 h-8 rounded-lg bg-white text-slate-900 flex items-center justify-center shrink-0">S</div>
+                        <div className="flex flex-col leading-tight mt-1.5">
+                            <span>{APP_NAME}</span>
                         </div>
                     </div>
                 )}

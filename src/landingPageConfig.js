@@ -1,3 +1,5 @@
+import { APP_NAME } from './config';
+
 export const landingPageConfig = {
     colors: {
         background: '#f4f2f0ff',
@@ -8,8 +10,8 @@ export const landingPageConfig = {
         accentBorder: 'rgba(3, 70, 56, 0.1)', // #034638 with 10% opacity
     },
     hero: {
-        title: "Personal Finance Tracking\nAutomated With Finsight.",
-        subtitle: "Stop wrestling with messy spreadsheets. FinSight uses AI to clean, categorize, and analyze your spending automatically, so you don't have to.",
+        title: `Personal Finance Tracking\nAutomated With ${APP_NAME}.`,
+        subtitle: `Stop wrestling with messy spreadsheets. ${APP_NAME} uses AI to clean, categorize, and analyze your spending automatically, so you don't have to.`,
         // Adjust these to tweak the positioning of the right-side images
         baseImageStyles: "top-10 right-0 w-4/5 transform translate-x-4 translate-y-8 rotate-3",
         overlapImageStyles: "top-[350px] left-0 w-3/4 transform -translate-x-8 -rotate-2",
@@ -42,16 +44,16 @@ export const landingPageConfig = {
     ],
     securitySection: {
         title: "Your Data. Your Control.",
-        subtitle: "Finsight never connects to your bank accounts.\nYou control exactly what data enters the platform.",
+        subtitle: `${APP_NAME} never connects to your bank accounts.\nYou control exactly what data enters the platform.`,
         sectionPadding: "pt-16",
         features: [
             {
                 title: "No Bank Integration",
-                description: "Finsight never connects to your bank accounts and does not use aggregators like Plaid. Your credentials are never requested or stored."
+                description: `${APP_NAME} never connects to your bank accounts and does not use aggregators like Plaid. Your credentials are never requested or stored.`
             },
             {
                 title: "Complete Data Control",
-                description: "Your data enters Finsight only when you upload a CSV export from your bank. Nothing is automatically synced."
+                description: `Your data enters ${APP_NAME} only when you upload a CSV export from your bank. Nothing is automatically synced.`
             },
             {
                 title: "Encrypted Storage",
@@ -59,7 +61,7 @@ export const landingPageConfig = {
             },
             {
                 title: "Minimal Data Stored",
-                description: "Finsight only stores the data required for analysis: Transaction Date, Description, and Amount. No account numbers or balances."
+                description: `${APP_NAME} only stores the data required for analysis: Transaction Date, Description, and Amount. No account numbers or balances.`
             }
         ]
     },

@@ -25,7 +25,7 @@ export default function DashboardLayout() {
     const location = useLocation();
 
     // Determine if onboarding is currently in progress
-    const onboardingStepStr = localStorage.getItem('finsight_onboarding_step');
+    const onboardingStepStr = localStorage.getItem('simplyspend_onboarding_step');
     const onboardingStep = onboardingStepStr ? parseInt(onboardingStepStr, 10) : 1;
     const isOnboarding = onboardingStep < 5 && location.pathname !== '/dashboard/getting-started';
 

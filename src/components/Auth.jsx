@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { APP_NAME } from '../config';
 
 export default function Auth() {
     const [searchParams] = useSearchParams();
@@ -67,9 +68,9 @@ export default function Auth() {
                 {/* Top: Logo */}
                 <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-md">
-                        F
+                        S
                     </div>
-                    <span className="font-bold text-xl tracking-tight text-slate-900">FinSight</span>
+                    <span className="font-bold text-xl tracking-tight text-slate-900">{APP_NAME}</span>
                 </div>
 
                 {/* Center: Form */}
@@ -77,7 +78,7 @@ export default function Auth() {
                     <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight">
                         {isSignUp ? 'Get started with' : 'Continue to'}
                         <br />
-                        <span className="text-slate-900">FinSight.</span>
+                        <span className="text-slate-900">{APP_NAME}.</span>
                     </h1>
                     <p className="text-slate-500 mt-3 text-base">
                         {isSignUp
@@ -205,7 +206,7 @@ export default function Auth() {
                         </div>
                         <div className="flex-1 flex justify-center">
                             <div className="bg-slate-100 rounded-lg px-4 py-1.5 text-xs text-slate-400 font-medium w-64 text-center">
-                                finsight.app/dashboard
+                                simplyspend.app/dashboard
                             </div>
                         </div>
                         <div className="w-[54px]" /> {/* Spacer to center address bar */}
@@ -215,7 +216,7 @@ export default function Auth() {
                     <div className="bg-white rounded-b-2xl border border-slate-200 border-t shadow-2xl shadow-slate-900/10 overflow-hidden">
                         <img
                             src="/dashboard-preview.png"
-                            alt="FinSight Dashboard Preview"
+                            alt={`${APP_NAME} Dashboard Preview`}
                             className="w-full h-auto block"
                         />
                     </div>

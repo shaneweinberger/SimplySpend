@@ -1,3 +1,5 @@
+import { APP_NAME } from './config';
+
 /**
  * gettingStartedConfig.js
  *
@@ -9,9 +11,9 @@ export const gettingStartedConfig = {
 
     // ── Header ────────────────────────────────────────────────────────────────
     header: {
-        title: "Welcome to Finsight",
+        title: `Welcome to ${APP_NAME}`,
         paragraphs: [
-            "Never worry about your spending again. Finsight uses AI to securely process your data, giving you the analytics and insights you need most.",
+            `Never worry about your spending again. ${APP_NAME} uses AI to securely process your data, giving you the analytics and insights you need most.`,
             "Built on the idea that your data belongs to you, we never connect to your bank accounts or third parties. Instead, you upload your transactions directly.",
         ],
         // Displayed larger and bolder beneath the paragraphs above
@@ -40,9 +42,9 @@ export const gettingStartedConfig = {
             navigateLabel: "Go to Rules",
             actionLabel: "Mark as Completed",
             lines: [
-                { text: "Define how Finsight's AI processes your transactions.", bold: true },
-                { text: "Create categories and rules to guide Finsight's AI when processing your transactions." },
-                { text: "No need to create rules for every transaction, Finsight's AI accurately categorizes almost all transactions." },
+                { text: `Define how ${APP_NAME}'s AI processes your transactions.`, bold: true },
+                { text: `Create categories and rules to guide ${APP_NAME}'s AI when processing your transactions.` },
+                { text: `No need to create rules for every transaction, ${APP_NAME}'s AI accurately categorizes almost all transactions.` },
             ],
         },
         {
@@ -51,8 +53,8 @@ export const gettingStartedConfig = {
             navigateLabel: "Go to Uploads",
             actionLabel: "Mark as Completed",
             lines: [
-                { text: "Upload your CSV file to Finsight.", bold: true },
-                { text: "Finsight will automatically:" },
+                { text: `Upload your CSV file to ${APP_NAME}.`, bold: true },
+                { text: `${APP_NAME} will automatically:` },
                 {
                     bullets: [
                         "Clean and standardize your transaction data",

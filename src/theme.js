@@ -1,5 +1,5 @@
 /**
- * FinSight Design System — Single source of truth for all UI colors.
+ * SimplySpend Design System — Single source of truth for all UI colors.
  *
  * How it works:
  *   1. This file defines every color token.
