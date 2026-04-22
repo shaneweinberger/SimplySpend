@@ -144,7 +144,9 @@ export default function Sidebar({ user, isCollapsed, setIsCollapsed }) {
                         className={`flex items-center gap-2 font-bold text-xl animate-fade-in-up whitespace-nowrap overflow-hidden ${user?.email === 'emmarlevine@gmail.com' ? 'cursor-pointer' : ''}`}
                         style={{ color: theme.sidebar.logoText }}
                     >
-                        <div className="w-8 h-8 rounded-lg bg-white text-slate-900 flex items-center justify-center shrink-0">S</div>
+                        <div className="w-8 h-8 rounded-[10px] overflow-hidden shrink-0 flex items-center justify-center">
+                            <img src="/logos/ss_logo_white.png" alt="SimplySpend" className="w-full h-full object-cover scale-[1.15]" />
+                        </div>
                         <div className="flex flex-col leading-tight mt-1.5">
                             <span>{APP_NAME}</span>
                         </div>

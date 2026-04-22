@@ -67,8 +67,8 @@ export default function Auth() {
             <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col justify-between p-8 sm:p-12 lg:p-16 shrink-0">
                 {/* Top: Logo */}
                 <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-md">
-                        S
+                    <div className="w-9 h-9 rounded-[12px] overflow-hidden shadow-md shrink-0 flex items-center justify-center">
+                        <img src="/logos/ss_logo_black.png" alt="SimplySpend Logo" className="w-full h-full object-cover scale-[1.15]" />
                     </div>
                     <span className="font-bold text-xl tracking-tight text-slate-900">{APP_NAME}</span>
                 </div>
