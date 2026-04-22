@@ -15,6 +15,9 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    Check,
+    Settings2,
+    GripHorizontal,
 } from 'lucide-react';
 import {
     BarChart,
@@ -96,6 +99,18 @@ export default function Overview() {
     // Ephemeral interaction state — intentionally NOT persisted
     const [focusCategory, setFocusCategory] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('');
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const categoryDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+                setShowCategoryDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // ── Locked tooltip (replaces chartPopover) ─────────────────────────────────
     const [lockedTooltip, setLockedTooltip] = useState(null); // { category, payload, x, y }
@@ -220,11 +235,11 @@ export default function Overview() {
     const handleCycleCategory = useCallback((direction) => {
         const currentIndex = fullCategoryList.indexOf(selectedCategory);
         if (currentIndex === -1) return;
-        
+
         let nextIndex = currentIndex + direction;
         if (nextIndex < 0) nextIndex = fullCategoryList.length - 1;
         if (nextIndex >= fullCategoryList.length) nextIndex = 0;
-        
+
         setSelectedCategory(fullCategoryList[nextIndex]);
     }, [fullCategoryList, selectedCategory]);
 
@@ -296,9 +311,23 @@ export default function Overview() {
 
     const defaultCategories = useMemo(() => categoryTotals.slice(0, DEFAULT_VISIBLE_CATEGORIES).map(c => c[0]), [categoryTotals]);
 
-    const [userSelectedCategories, setUserSelectedCategories] = useState(null);
+    const [userSelectedCategories, _setUserSelectedCategories] = useState(() => {
+        try {
+            const saved = localStorage.getItem('simplyspend_selected_categories');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    });
 
-    useEffect(() => { setUserSelectedCategories(null); }, [effectiveDateRange]);
+    const setUserSelectedCategories = useCallback((val) => {
+        _setUserSelectedCategories(val);
+        if (val) {
+            localStorage.setItem('simplyspend_selected_categories', JSON.stringify(val));
+        } else {
+            localStorage.removeItem('simplyspend_selected_categories');
+        }
+    }, []);
 
     const activeVisibleCategories = useMemo(() => (
         userSelectedCategories !== null ? userSelectedCategories : defaultCategories
@@ -463,7 +492,7 @@ export default function Overview() {
         <div className="space-y-8 animate-in fade-in duration-700">
             <header className="flex items-end justify-between gap-4 flex-wrap pl-2">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Financial Overview</h1>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Spending Overview</h1>
                     <p className="text-slate-500">Track spending trends and identify patterns over time.</p>
                 </div>
             </header>
@@ -526,22 +555,22 @@ export default function Overview() {
 
                         {focusCategory && (
                             <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <button 
-                                    onClick={() => handleCycleCategory(-1)} 
+                                <button
+                                    onClick={() => handleCycleCategory(-1)}
                                     className="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10 transition-colors"
                                     aria-label="Previous Category"
                                 >
                                     <ChevronLeft size={20} strokeWidth={2.5} />
                                 </button>
-                                
+
                                 <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
                                     className="bg-accent-light/50 border border-accent-ring text-accent-light-text font-bold text-sm rounded-xl focus:ring-2 focus:ring-accent-ring focus:border-accent-border block min-w-[160px] p-2 outline-none cursor-pointer">
                                     {categoryNames.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                     <option value="Uncategorized">Uncategorized</option>
                                 </select>
-                                
-                                <button 
-                                    onClick={() => handleCycleCategory(1)} 
+
+                                <button
+                                    onClick={() => handleCycleCategory(1)}
                                     className="p-1.5 rounded-lg text-slate-400 hover:text-accent hover:bg-accent/10 transition-colors"
                                     aria-label="Next Category"
                                 >
@@ -558,18 +587,75 @@ export default function Overview() {
                     <div className="bg-surface-card p-6 rounded-2xl border border-divider shadow-sm flex flex-col min-h-[450px]">
 
                         {/* Chart header + draggable pill row */}
-                        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-900">Spending Trends</h3>
-                                <p className="text-sm text-slate-500">
-                                    {focusCategory
-                                        ? 'Click a bar to see details and actions.'
-                                        : 'Drag pills to reorder stack. Click a segment to see details.'}
-                                </p>
+                        {/* Chart header + draggable pill row */}
+                        {/* Chart header + draggable pill row */}
+                        <div className="mb-8 flex flex-col gap-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Spending Trends</h3>
+                                    <p className="text-sm text-slate-500">
+                                        {focusCategory
+                                            ? 'Click a bar to see details and actions.'
+                                            : 'Drag pills to reorder their stack layer.'}
+                                    </p>
+                                </div>
+
+                                {!focusCategory && (
+                                    <div className="relative flex-shrink-0 group" ref={categoryDropdownRef}>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setShowCategoryDropdown(!showCategoryDropdown); }}
+                                            className={`flex items-center gap-2 px-3 py-1.5 bg-white border text-xs font-bold rounded-full shadow-sm transition-all ${
+                                                showCategoryDropdown 
+                                                    ? 'border-accent text-accent ring-2 ring-accent/20' 
+                                                    : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:shadow-md'
+                                            }`}
+                                        >
+                                            <Settings2 size={14} className={showCategoryDropdown ? 'text-accent' : 'text-slate-400 group-hover:text-accent transition-colors'} />
+                                            Edit Stack
+                                        </button>
+                                        
+                                        {showCategoryDropdown && (
+                                            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 z-[100] p-2 animate-in fade-in zoom-in-95 duration-100">
+                                                <div className="px-3 py-2 border-b border-slate-100 mb-2 flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Categories</p>
+                                                        <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{activeVisibleCategories.length}</span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setUserSelectedCategories(activeVisibleCategories.length === categoryTotals.length ? [] : categoryTotals.map(c => c[0])); 
+                                                        }}
+                                                        className="text-[10px] font-bold text-slate-500 hover:text-accent hover:underline transition-all"
+                                                    >
+                                                        {activeVisibleCategories.length === categoryTotals.length ? 'Clear All' : 'Select All'}
+                                                    </button>
+                                                </div>
+                                                <div className="max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                                    {categoryTotals.map(([cat, total]) => (
+                                                        <label key={cat} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer rounded-xl transition-colors group">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="sr-only" 
+                                                                checked={activeVisibleCategories.includes(cat)}
+                                                                onChange={(e) => { e.stopPropagation(); toggleCategoryVisibility(cat); }}
+                                                            />
+                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${activeVisibleCategories.includes(cat) ? 'bg-accent border-accent' : 'bg-white border-slate-300 group-hover:border-accent'}`}>
+                                                                {activeVisibleCategories.includes(cat) && <Check size={12} className="text-white" strokeWidth={3} />}
+                                                            </div>
+                                                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: getColorForCategory(cat) }} />
+                                                            <span className="text-sm font-bold text-slate-700 flex-1 truncate">{cat}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {!focusCategory && (
-                                <div className="flex flex-wrap items-center gap-2 max-w-full">
+                                <div className="flex flex-wrap items-center gap-2 max-w-full relative">
                                     {activeVisibleCategories.map((cat, idx) => (
                                         <React.Fragment key={cat}>
                                             {/* Insertion line — shown BEFORE the drop target */}
@@ -582,16 +668,19 @@ export default function Overview() {
                                                 onDragOver={(e) => handlePillDragOver(e, idx)}
                                                 onDrop={(e) => handlePillDrop(e, idx)}
                                                 onDragEnd={handlePillDragEnd}
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm text-xs font-bold text-slate-700 cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${dragIndex === idx
+                                                className={`group flex items-center gap-1.5 pl-1 pr-3 py-1.5 rounded-full border shadow-sm text-xs font-bold text-slate-700 cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${dragIndex === idx
                                                     ? 'opacity-40 scale-95 bg-slate-100 border-slate-300'
                                                     : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-md'
                                                     }`}
                                             >
-                                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getColorForCategory(cat, idx) }} />
+                                                <div className="p-1 rounded-full text-slate-300 group-hover:text-slate-500 transition-colors">
+                                                    <GripHorizontal size={14} strokeWidth={2.5} />
+                                                </div>
+                                                <div className="w-2.5 h-2.5 rounded-full shrink-0 ml-0.5" style={{ backgroundColor: getColorForCategory(cat, idx) }} />
                                                 {cat}
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); toggleCategoryVisibility(cat); }}
-                                                    className="ml-0.5 text-slate-400 hover:text-slate-700 transition-colors"
+                                                    className="ml-0.5 p-0.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-all"
                                                     onMouseDown={e => e.stopPropagation()}
                                                 >
                                                     <X size={12} strokeWidth={2.5} />
@@ -599,24 +688,9 @@ export default function Overview() {
                                             </div>
                                         </React.Fragment>
                                     ))}
-
-                                    {remainingCount > 0 && (
-                                        <div className="relative flex items-center group">
-                                            <div className="absolute left-3 w-2.5 h-2.5 rounded-full z-10 pointer-events-none" style={{ backgroundColor: getColorForCategory('remaining') }} />
-                                            <select
-                                                className="appearance-none bg-white border border-dashed border-slate-300 text-slate-500 hover:text-accent hover:border-accent-border hover:bg-white font-bold text-xs rounded-full pl-7 pr-7 py-1.5 outline-none cursor-pointer transition-all shadow-sm"
-                                                value=""
-                                                onChange={e => { if (e.target.value) toggleCategoryVisibility(e.target.value); }}
-                                            >
-                                                <option value="" disabled>Remaining ({remainingCount})</option>
-                                                {categoryTotals.filter(c => !activeVisibleCategories.includes(c[0])).map(c => (
-                                                    <option key={c[0]} value={c[0]}>+ Add {c[0]}</option>
-                                                ))}
-                                            </select>
-                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 group-hover:text-accent">
-                                                <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                                            </div>
-                                        </div>
+                                    {/* Insertion line logic for end of list */}
+                                    {dragIndex !== null && dragOverIndex === activeVisibleCategories.length - 1 && dragIndex !== activeVisibleCategories.length - 1 && (
+                                        <div className="w-0.5 h-6 bg-accent rounded-full shrink-0 animate-in fade-in duration-100" />
                                     )}
                                 </div>
                             )}
@@ -645,25 +719,27 @@ export default function Overview() {
                                             </Bar>
                                         </BarChart>
                                     ) : (
-                                        <BarChart data={presentationChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                        <BarChart key={activeVisibleCategories.join(',')} data={presentationChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.chart.gridline} />
                                             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} dy={10} minTickGap={20} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fill: theme.chart.axisLabel, fontSize: 11, fontWeight: 500 }} tickFormatter={val => `$${val}`} width={80} domain={[0, dataMax => Math.round(dataMax * 1.15)]} />
                                             <RechartsTooltip shared={false} cursor={{ fill: theme.chart.cursorFill, radius: 6 }} content={<HoverTooltip />} isAnimationActive={false} />
                                             {activeVisibleCategories.map((cat, index) => {
                                                 // last user-category bar = topmost when no remaining
-                                                const isTop = remainingCount === 0 && index === activeVisibleCategories.length - 1;
+                                                const isTopLayer = remainingCount === 0 && index === activeVisibleCategories.length - 1;
                                                 return (
                                                     <Bar key={cat} dataKey={cat} stackId="a"
+                                                        isAnimationActive={false}
                                                         fill={getColorForCategory(cat, index)}
                                                         className="cursor-pointer"
-                                                        radius={isTop ? [6, 6, 0, 0] : [0, 0, 0, 0]}
+                                                        radius={isTopLayer ? [6, 6, 0, 0] : [0, 0, 0, 0]}
                                                         onClick={(data, idx, e) => handleBarClick(cat, data, e)}
                                                     />
                                                 );
                                             })}
-                                            {/* Always rendered LAST → permanently at top of stack. Never conditionally unmounted. */}
+                                            {/* Always rendered LAST → permanently at visibile top of stack. */}
                                             <Bar key="remaining" dataKey="remaining"
+                                                isAnimationActive={false}
                                                 name={`Remaining ${remainingCount} categor${remainingCount === 1 ? 'y' : 'ies'}`}
                                                 stackId="a" fill={getColorForCategory('remaining')}
                                                 className={remainingCount > 0 ? 'cursor-pointer' : ''}
@@ -816,7 +892,7 @@ export default function Overview() {
                     <p className="text-slate-500 max-w-md leading-relaxed text-sm">
                         You have not successfully uploaded any transactions yet. Head over to tracking setup or upload a file directly to populate this overview.
                     </p>
-                    <button 
+                    <button
                         onClick={() => navigate('/dashboard/getting-started')}
                         className="mt-8 px-6 py-2.5 bg-slate-900 text-white rounded-full font-bold text-sm shadow-md hover:-translate-y-0.5 active:scale-95 transition-all focus:outline-none"
                     >
