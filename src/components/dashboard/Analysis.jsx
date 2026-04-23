@@ -653,10 +653,18 @@ export default function Analysis() {
                                 >
                                     <ChevronLeft size={18} strokeWidth={2.5} />
                                 </button>
-                                <div className="flex items-center gap-2 bg-white px-5 py-2 rounded-2xl border border-slate-200 shadow-sm min-h-[44px]">
-                                    <span className="text-sm font-semibold text-slate-700 min-w-[120px] text-center select-none">
-                                        {currentLabel}
-                                    </span>
+                                <div className="flex items-center gap-1 bg-white pl-4 pr-3 py-2 rounded-2xl border border-slate-200 shadow-sm min-h-[44px]">
+                                    <select
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                        className="text-sm font-semibold text-slate-700 min-w-[110px] text-center outline-none bg-transparent cursor-pointer appearance-none"
+                                        style={{ textAlignLast: 'center' }}
+                                    >
+                                        {monthOptions.map(m => (
+                                            <option key={m.value} value={m.value}>{m.label}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="text-slate-400 pointer-events-none" />
                                 </div>
                                 <button
                                     onClick={() => canGoNext && setSelectedMonth(monthOptions[currentIndex - 1].value)}
