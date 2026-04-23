@@ -126,6 +126,22 @@ serve(async (req: { method: string; }) => {
             );
         }
 
+        // ── Claim rows immediately ────────────────────────────────────────────
+        // Mark all fetched rows as 'processing' before doing any async work.
+        // This prevents a concurrent invocation from picking up the same rows
+        // and causing a race condition (FK violation on silver upsert).
+        const claimedIds = transactions.map((t: any) => t.id);
+        const { error: claimError } = await supabase
+            .schema("bronze")
+            .from("transactions")
+            .update({ status: "processing" })
+            .in("id", claimedIds);
+        if (claimError) {
+            console.error("[2.1] Failed to claim rows — aborting to avoid race condition", claimError);
+            throw claimError;
+        }
+        console.log(`[2.1] Claimed ${claimedIds.length} rows as 'processing'`);
+
         // 3. Group by User ID to process user-specific rules
         const txByUser: Record<string, typeof transactions> = {};
         for (const tx of transactions) {
@@ -198,24 +214,29 @@ serve(async (req: { method: string; }) => {
             const structuredRules = rules.filter((r: any) => r.conditions && r.actions);
             const nlpRules = rules.filter((r: any) => r.rule_text).map((r: any) => r.rule_text);
 
+            // raw_data is now pre-normalized by the frontend CSV parser to:
+            // { Date: "YYYY-MM-DD", Description: "...", Amount: <number> }
+            // No MoneyOut/MoneyIn splitting needed — Amount is already a signed float.
             const transactionsToClassify = userTxs.map((tx: { raw_data: any; id: any; transaction_account: any; }) => {
                 const raw = tx.raw_data;
-                let amount = 0;
 
-                const parseAmount = (val: any): number => {
-                    if (val === undefined || val === null || val === '') return 0;
-                    const clean = String(val).replace(/[^0-9.-]/g, '');
-                    const parsed = parseFloat(clean);
-                    return isNaN(parsed) ? 0 : parsed;
-                };
-
-                const moneyOut = parseAmount(raw.MoneyOut);
-                const moneyIn = parseAmount(raw.MoneyIn);
-
-                if (moneyOut !== 0) {
-                    amount = -1 * Math.abs(moneyOut);
-                } else if (moneyIn !== 0) {
-                    amount = Math.abs(moneyIn);
+                // Amount: already a signed number from the frontend parser.
+                // Defensive fallback for legacy rows that may still have MoneyOut/MoneyIn.
+                let amount: number;
+                if (raw.Amount !== undefined && raw.Amount !== null) {
+                    const parsed = parseFloat(String(raw.Amount).replace(/[^0-9.\-]/g, ''));
+                    amount = isFinite(parsed) ? parsed : 0;
+                } else {
+                    // Legacy fallback: compute from MoneyOut / MoneyIn
+                    const parseVal = (val: any): number => {
+                        if (val === undefined || val === null || val === '') return 0;
+                        const clean = String(val).replace(/[^0-9.\-]/g, '');
+                        const p = parseFloat(clean);
+                        return isFinite(p) ? p : 0;
+                    };
+                    const moneyOut = parseVal(raw.MoneyOut);
+                    const moneyIn  = parseVal(raw.MoneyIn);
+                    amount = moneyOut !== 0 ? -1 * Math.abs(moneyOut) : Math.abs(moneyIn);
                 }
 
                 const dateObj = new Date(raw.Date);

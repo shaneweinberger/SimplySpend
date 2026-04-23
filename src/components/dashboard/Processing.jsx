@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { theme } from '../../theme';
-import Papa from 'papaparse';
+import { parseBankCSV } from '../../utils/csvParser';
 import {
     UploadCloud,
     CheckCircle2,
@@ -13,6 +13,7 @@ import {
     X,
     Trash2,
     Lock,
+    AlertTriangle,
 } from 'lucide-react';
 import { useProcessing } from '../../lib/ProcessingContext';
 
@@ -23,6 +24,7 @@ export default function Processing() {
     const [isDragging, setIsDragging] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [status, setStatus] = useState({ type: '', message: '' });
+    const [parseErrorModal, setParseErrorModal] = useState({ open: false, message: '' });
     const fileInputRef = useRef(null);
     const { startProcessing, stopProcessing, getAbortSignal } = useProcessing();
 
@@ -182,40 +184,51 @@ export default function Processing() {
     const handleRunAiProcessing = async () => {
         if (!pendingFile || !selectedAccount) return;
         setProcessing(true);
-        setStatus({ type: 'info', message: 'Uploading…' });
+        setStatus({ type: 'info', message: 'Parsing CSV…' });
         startProcessing('Uploading and categorizing your transactions with AI…');
 
-        Papa.parse(pendingFile, {
-            header: false,
-            skipEmptyLines: true,
-            complete: async (results) => {
-                try {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (!user) throw new Error('Not authenticated');
+        try {
+            // Smart-parse the CSV: auto-detects headers vs. headerless formats
+            const { transactions: parsed, error: parseError } = await parseBankCSV(pendingFile);
 
-                    const fileId = crypto.randomUUID();
-                    const transactions = results.data.map(row => ({
-                        user_id: user.id,
-                        file_id: fileId,
-                        file_name: pendingFile.name,
-                        transaction_account: selectedAccount,
-                        raw_data: { Date: row[0], Description: row[1], MoneyOut: row[2], MoneyIn: row[3], Balance: row[4] },
-                        status: 'pending'
-                    }));
+            if (parseError) {
+                setParseErrorModal({ open: true, message: parseError });
+                setProcessing(false);
+                stopProcessing();
+                return;
+            }
 
-                    const { error } = await supabase.schema('bronze').from('transactions').insert(transactions);
-                    if (error) throw error;
+            if (parsed.length === 0) {
+                setStatus({ type: 'error', message: 'No transactions found in the CSV file.' });
+                setProcessing(false);
+                stopProcessing();
+                return;
+            }
 
-                    setStatus({ type: 'info', message: 'Uploaded. AI categorizing…' });
-                    await processTransactionsInternal();
-                } catch (err) {
-                    setStatus({ type: 'error', message: `Failed to upload: ${err.message}` });
-                    setProcessing(false);
-                    stopProcessing();
-                }
-            },
-            error: (err) => { setStatus({ type: 'error', message: `CSV error: ${err.message}` }); setProcessing(false); stopProcessing(); }
-        });
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            const fileId = crypto.randomUUID();
+            const transactions = parsed.map(row => ({
+                user_id: user.id,
+                file_id: fileId,
+                file_name: pendingFile.name,
+                transaction_account: selectedAccount,
+                raw_data: row, // Already standardized: { Date, Description, Amount }
+                status: 'pending'
+            }));
+
+            setStatus({ type: 'info', message: 'Uploading…' });
+            const { error } = await supabase.schema('bronze').from('transactions').insert(transactions);
+            if (error) throw error;
+
+            setStatus({ type: 'info', message: 'Uploaded. AI categorizing…' });
+            await processTransactionsInternal();
+        } catch (err) {
+            setStatus({ type: 'error', message: `Failed to upload: ${err.message}` });
+            setProcessing(false);
+            stopProcessing();
+        }
     };
 
     const processTransactionsInternal = async () => {
@@ -300,8 +313,32 @@ export default function Processing() {
     const isTokenLimitBlocked = tokenLimitInfo != null;
     const canRun = !!pendingFile && !!selectedAccount && !isAddingNewAccount && !processing && !isTokenLimitBlocked;
 
+    // ── Parse Error Modal ─────────────────────────────────────────────────────
+    const ParseErrorModal = () => {
+        if (!parseErrorModal.open) return null;
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 space-y-4">
+                    <div className="flex items-center gap-3 text-amber-600">
+                        <AlertTriangle size={24} />
+                        <h3 className="text-lg font-bold text-slate-900">Unrecognized CSV Format</h3>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed">{parseErrorModal.message}</p>
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => setParseErrorModal({ open: false, message: '' })}
+                            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-semibold hover:bg-accent-hover transition-all"
+                        >Got it</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     // ─────────────────────────────────────────────────────────────────────────
     return (
+        <>
+        <ParseErrorModal />
         <div className="w-full pb-16 animate-in fade-in duration-500">
 
             {/* ── Page Header ──────────────────────────────────────────── */}
@@ -590,5 +627,6 @@ export default function Processing() {
             </div>
 
         </div>
+        </>
     );
 }

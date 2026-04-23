@@ -9,6 +9,12 @@ AI-powered personal finance dashboard built with React, Supabase, and Google Gem
 - **AI**: Google Gemini (via Edge Functions)
 - **Styling**: Tailwind CSS
 
+## Dynamic Data Ingestion
+
+FinSight handles transactions from different banks (e.g. Chase vs. TD Bank) automatically using a heuristic-based **Dynamic Schema Detection** system. Users do not need to manually map their columns during upload; the application reads the file structure to detect and normalize schemas seamlessly. 
+
+Read more about how this works in the [CSV Ingestion Architecture Documentation](./csv-ingestion-architecture.md).
+
 ## Getting Started
 
 ```bash
