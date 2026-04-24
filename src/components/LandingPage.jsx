@@ -3,12 +3,32 @@ import { Check, Menu, X, Brain, Shield, Zap, LayoutDashboard, CloudUpload, Shiel
 import { useNavigate } from 'react-router-dom';
 import { landingPageConfig } from "../landingPageConfig";
 import { APP_NAME } from '../config';
+import { supabase } from '../lib/supabaseClient';
 
 export default function LandingPage() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isOverDarkSection, setIsOverDarkSection] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
+
+    // Redirect authenticated users (including OAuth callbacks) to /dashboard
+    useEffect(() => {
+        // Check for an existing session on mount
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                navigate('/dashboard', { replace: true });
+            }
+        });
+
+        // Listen for auth state changes (e.g. when Supabase parses the #access_token from the URL)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                navigate('/dashboard', { replace: true });
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [navigate]);
 
     // Attach onScroll to the outer div instead of window since we are using h-screen overflow-y-auto
     const handleScroll = (e) => {
