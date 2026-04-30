@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Check, Menu, X, Brain, Shield, Zap, LayoutDashboard, CloudUpload, ShieldCheck, LineChart, Lock, EyeOff, FileSpreadsheet, Database, AlignLeft } from "lucide-react";
+import { Check, Menu, X, Brain, Shield, Zap, LayoutDashboard, CloudUpload, ShieldCheck, LineChart, Lock, EyeOff, FileSpreadsheet, Database, AlignLeft, Github, Mail } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { landingPageConfig } from "../landingPageConfig";
 import { APP_NAME } from '../config';
@@ -80,11 +80,7 @@ export default function LandingPage() {
                         {APP_NAME}
                     </div>
 
-                    {/* Desktop Links */}
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-                        <a href="#features" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Features</a>
-                        <a href="#security" className={`transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Security</a>
-                    </div>
+                    {/* Desktop Links Removed */}
 
                     {/* Right Area */}
                     <div className="hidden md:flex items-center gap-4">
@@ -120,9 +116,7 @@ export default function LandingPage() {
                         ? 'bg-[var(--lp-primary)] border-[var(--lp-primary-text)] opacity-90'
                         : 'bg-[var(--lp-bg)] border-[var(--lp-accent-border)]'
                         }`}>
-                        <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Features</a>
-                        <a href="#security" onClick={() => setIsMobileMenuOpen(false)} className={`font-medium p-2 transition-opacity duration-300 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-80 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Security</a>
-                        <hr className={`transition-opacity duration-500 ${isOverDarkSection ? 'border-[var(--lp-primary-text)] opacity-20' : 'border-[var(--lp-accent-border)]'}`} />
+                        {/* Mobile Links Removed */}
                         <button onClick={() => navigate('/auth')} className={`w-full text-center py-2 font-medium transition-opacity duration-500 ${isOverDarkSection ? 'text-[var(--lp-primary-text)] opacity-90 hover:opacity-100 hover:text-white' : 'text-[var(--lp-primary)] opacity-70 hover:opacity-100'}`}>Log In</button>
                         <button onClick={() => navigate('/auth?signup=true')} className={`w-full py-3 rounded-xl font-medium transition-colors duration-500 ${isOverDarkSection ? 'bg-[var(--lp-primary-text)] text-[var(--lp-primary)] hover:bg-white' : 'bg-[var(--lp-primary)] text-[var(--lp-primary-text)] hover:opacity-90'}`}>Get Started</button>
                     </div>
@@ -243,49 +237,63 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA Section */}
-            <section className="relative z-10 w-full py-24 bg-[var(--lp-bg)] snap-start flex flex-col items-center justify-center px-6 text-center">
-                <h2 className="text-3xl md:text-4xl font-bold text-[var(--lp-primary)] mb-8">
-                    Ready to take control of your finances?
-                </h2>
-                <button
-                    onClick={() => navigate('/auth?signup=true')}
-                    className="bg-[var(--lp-primary)] hover:bg-[var(--lp-primary)]/90 text-[var(--lp-primary-text)] text-lg font-medium px-10 py-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:-translate-y-1"
-                >
-                    Get Started
-                </button>
-                <p className="mt-6 text-sm font-medium text-[var(--lp-primary)]/60 flex items-center justify-center gap-2">
-                    <ShieldCheck size={16} />
-                    No bank logins required.
-                </p>
-            </section>
+            {/* CTA & Footer Section */}
+            <footer className="relative z-10 w-full bg-[var(--lp-bg)] snap-start flex flex-col items-center justify-center pt-32 pb-12 px-6 text-center">
+                {/* CTA Content */}
+                <div className="mb-24 flex flex-col items-center">
+                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--lp-primary)] mb-8 tracking-tight">
+                        Ready to take control of your finances?
+                    </h2>
+                    <button
+                        onClick={() => navigate('/auth?signup=true')}
+                        className="bg-[var(--lp-primary)] hover:bg-[var(--lp-primary)]/90 text-[var(--lp-primary-text)] text-lg font-medium px-10 py-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:-translate-y-1"
+                    >
+                        Get Started
+                    </button>
+                    <p className="mt-6 text-sm font-medium text-[var(--lp-primary)]/60 flex items-center justify-center gap-2">
+                        <ShieldCheck size={16} />
+                        No bank logins required.
+                    </p>
+                </div>
 
-            {/* Footer */}
-            <footer className={`relative z-10 bg-[var(--lp-bg)] text-[var(--lp-primary)] ${landingPageConfig.footer.padding} px-4 border-t border-[var(--lp-primary)]/10 snap-start flex flex-col justify-center w-full`}>
-                <div className="max-w-6xl mx-auto w-full grid md:grid-cols-4 gap-12">
-                    <div className="col-span-2">
-                        <div className="flex items-center gap-2 font-bold text-2xl mb-6 text-[var(--lp-primary)]">
+                {/* Footer Content */}
+                <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 max-w-6xl mx-auto w-full pt-12 border-t border-[var(--lp-primary)]/10 text-center md:text-left">
+                    {/* Left: Branding */}
+                    <div className="flex flex-col items-center md:items-start gap-4">
+                        <div className="flex items-center gap-3 font-bold text-2xl text-[var(--lp-primary)]">
                             <div className="w-10 h-10 rounded-[12px] overflow-hidden shrink-0 flex items-center justify-center">
                                 <img src="/logos/ss_logo_green.png" alt="SimplySpend Logo" className="w-full h-full object-cover scale-[1.15]" />
                             </div>
                             {APP_NAME}
                         </div>
-                        <p className="max-w-sm text-[var(--lp-primary)]/70 leading-relaxed text-lg">The intelligent, privacy-focused personal finance tracker for the modern era.</p>
+
+                        <p className="text-[var(--lp-primary)]/70 leading-relaxed text-sm max-w-xs">
+                            The intelligent, privacy-focused personal finance tracker for the modern era.
+                        </p>
+
+                        <div className="text-[var(--lp-primary)]/50 text-xs font-medium mt-2">
+                            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+                        </div>
                     </div>
-                    <div>
-                        <h4 className="font-bold mb-6 text-[var(--lp-primary)] text-lg">Product</h4>
-                        <ul className="space-y-4 text-[var(--lp-primary)]/70">
-                            <li><a href="#features" className="hover:text-[var(--lp-primary)] transition-colors">Features</a></li>
-                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">Changelog</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold mb-6 text-[var(--lp-primary)] text-lg">Company</h4>
-                        <ul className="space-y-4 text-[var(--lp-primary)]/70">
-                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">About</a></li>
-                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">Contact</a></li>
-                            <li><a href="#" className="hover:text-[var(--lp-primary)] transition-colors">Twitter</a></li>
-                        </ul>
+
+                    {/* Right: Developer Links */}
+                    <div className="flex flex-col items-center md:items-end gap-3 mt-4 md:mt-0">
+                        <a
+                            href="mailto:dev.shanewein@gmail.com"
+                            className="text-[var(--lp-primary)]/60 hover:text-[var(--lp-primary)] transition-colors duration-300 flex items-center gap-2 text-sm font-medium"
+                        >
+                            <Mail size={20} />
+                            <span className="inline">Contact</span>
+                        </a>
+                        <a
+                            href="https://github.com/shaneweinberger/SimplySpend"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[var(--lp-primary)]/60 hover:text-[var(--lp-primary)] transition-colors duration-300 flex items-center gap-2 text-sm font-medium"
+                        >
+                            <Github size={20} />
+                            <span className="inline">GitHub</span>
+                        </a>
                     </div>
                 </div>
             </footer>
