@@ -187,7 +187,8 @@ serve(async (req: { method: string; }) => {
         const results = [];
 
         // 4. Process per User
-        for (const userId of Object.keys(txByUser)) {
+        const userIds = Object.keys(txByUser);
+        for (const [userIndex, userId] of userIds.entries()) {
             const userTxs = txByUser[userId];
 
             // ── A. Token Limit Pre-flight Check ──────────────────────────────
@@ -219,6 +220,27 @@ serve(async (req: { method: string; }) => {
                 if (tokensUsedThisPeriod >= profile.token_limit) {
                     const resetAt = getResetAt(profile.limit_period);
                     console.log(`[2.2] User ${userId} token limit exceeded. Reset at ${resetAt}`);
+
+                    // Release the rows this request claimed but won't process —
+                    // this user's and every user after them in the loop. Without
+                    // this they stay 'processing' forever, and since only
+                    // 'pending' rows are ever fetched they'd never be categorized,
+                    // even after the limit resets.
+                    const unprocessedIds = userIds
+                        .slice(userIndex)
+                        .flatMap((id) => txByUser[id].map((t: any) => t.id));
+                    const { error: releaseError } = await supabase
+                        .schema("bronze")
+                        .from("transactions")
+                        .update({ status: "pending" })
+                        .in("id", unprocessedIds)
+                        .eq("status", "processing");
+                    if (releaseError) {
+                        console.error("[2.2] Failed to release claimed rows back to pending", releaseError);
+                    } else {
+                        console.log(`[2.2] Released ${unprocessedIds.length} claimed rows back to 'pending'`);
+                    }
+
                     return new Response(
                         JSON.stringify({
                             error: "TOKEN_LIMIT_EXCEEDED",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { parseBankCSV } from '../../utils/csvParser';
+import { deduplicateTransactions } from '../../utils/deduplicateTransactions';
 import {
     UploadCloud,
     CheckCircle2,
@@ -291,8 +292,27 @@ export default function Processing() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
+            // Drop rows already uploaded for this account (overlapping exports).
+            setStatus({ type: 'info', message: 'Checking for duplicates…' });
+            const { newRows, duplicateCount } = await deduplicateTransactions(
+                parsed, user.id, selectedAccount, supabase
+            );
+            const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+            if (newRows.length === 0) {
+                setStatus({
+                    type: 'success',
+                    message: `All ${plural(duplicateCount, 'transaction')} in this file are already uploaded for ${selectedAccount}. Nothing new to add.`
+                });
+                setPendingFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                setProcessing(false);
+                stopProcessing();
+                return;
+            }
+
             const fileId = crypto.randomUUID();
-            const transactions = parsed.map(row => ({
+            const transactions = newRows.map(row => ({
                 user_id: user.id,
                 file_id: fileId,
                 file_name: pendingFile.name,
@@ -301,16 +321,19 @@ export default function Processing() {
                 status: 'pending'
             }));
 
-            const skipNote = skippedCount > 0
-                ? ` (skipped ${skippedCount} blank row${skippedCount === 1 ? '' : 's'})`
-                : '';
+            const notes = [
+                skippedCount > 0 && `skipped ${plural(skippedCount, 'blank row')}`,
+                duplicateCount > 0 && `skipped ${plural(duplicateCount, 'duplicate')}`,
+            ].filter(Boolean);
+            const skipNote = notes.length ? ` (${notes.join(', ')})` : '';
 
-            setStatus({ type: 'info', message: `Uploading ${parsed.length} transactions${skipNote}…` });
+            setStatus({ type: 'info', message: `Uploading ${plural(newRows.length, 'transaction')}${skipNote}…` });
             const { error } = await supabase.schema('bronze').from('transactions').insert(transactions);
             if (error) throw error;
 
             setStatus({ type: 'info', message: 'Uploaded. AI categorizing…' });
-            await processTransactionsInternal();
+            // Pass the skip note on so the final "Done!" message keeps it.
+            await processTransactionsInternal(skipNote);
         } catch (err) {
             setStatus({ type: 'error', message: `Failed to upload: ${err.message}` });
             setProcessing(false);
@@ -318,7 +341,7 @@ export default function Processing() {
         }
     };
 
-    const processTransactionsInternal = async () => {
+    const processTransactionsInternal = async (skipNote = '') => {
         const abortSignal = getAbortSignal();
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -374,7 +397,7 @@ export default function Processing() {
                 loops++;
             }
 
-            setStatus({ type: 'success', message: `Done! ${totalProcessed} transactions processed.` });
+            setStatus({ type: 'success', message: `Done! ${totalProcessed} transactions processed${skipNote}.` });
             setPendingFile(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
             fetchHistory();
