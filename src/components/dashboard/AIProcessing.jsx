@@ -630,6 +630,7 @@ export default function AIProcessing() {
                 .from('transactions')
                 .select('file_id, file_name, transaction_account, created_at, status')
                 .eq('user_id', user.id)
+                .neq('status', 'deleted') // rows removed by a rule: kept only for duplicate detection
                 .order('created_at', { ascending: false });
             if (error) throw error;
 

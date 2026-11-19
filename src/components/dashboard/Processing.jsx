@@ -147,6 +147,7 @@ export default function Processing() {
                 .from('transactions')
                 .select('file_id, file_name, transaction_account, created_at, status, raw_data')
                 .eq('user_id', user.id)
+                .neq('status', 'deleted') // rows removed by a rule: kept only for duplicate detection
                 .order('created_at', { ascending: false });
             if (error) throw error;
 
@@ -234,6 +235,7 @@ export default function Processing() {
                 .select('id')
                 .eq('user_id', user.id)
                 .eq('transaction_account', accountName)
+                .neq('status', 'deleted')
                 .limit(1);
             if (checkError) throw checkError;
 

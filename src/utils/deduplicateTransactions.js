@@ -9,10 +9,11 @@
  * new file holds two, one is a duplicate and one is new. Two identical rows
  * within the same file are both kept.
  *
- * Every bronze row counts as "already there", whatever its status — including
- * rows the AI retired via a delete rule, and rows whose silver transaction the
- * user deleted. Re-importing those on every overlapping upload would undo the
- * user's (or the rule's) decision.
+ * Every bronze row counts as "already there", whatever its status, including
+ * rows whose silver transaction the user deleted and rows a rule removed
+ * (status 'deleted'; see migration 20261112120000_bronze_deleted_status.sql).
+ * Rows removed by a rule before that migration were physically deleted, so
+ * they'll be re-imported once more, then kept as 'deleted' from then on.
  *
  * Used by the upload screens and by the TD EasyWeb sync script, so it takes the
  * Supabase client as an argument (anon in the browser, service role in Node).

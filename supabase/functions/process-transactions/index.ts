@@ -530,11 +530,32 @@ serve(async (req: { method: string; }) => {
             console.log(`[9] Database updates: del=${bronzeDeleteIds.length}, err=${bronzeErrorIds.length}, ok=${bronzeProcessedIds.length}`);
 
             if (bronzeDeleteIds.length > 0) {
-                console.log(`[9.1] Physically deleting ${bronzeDeleteIds.length} items from bronze`);
-                const { error: bronzeDeleteError } = await supabase.schema("bronze").from("transactions")
+                // Keep rule-deleted rows in bronze as status 'deleted' rather than
+                // removing them, so duplicate detection can still match them and
+                // later uploads/syncs don't re-import them every time.
+                console.log(`[9.1] Marking ${bronzeDeleteIds.length} items as DELETED in bronze`);
+
+                // A row being reprocessed may already have a silver transaction.
+                // Physically deleting bronze used to cascade to it; now remove it here.
+                const { error: silverDeleteError } = await supabase
+                    .from("silver_transactions")
                     .delete()
+                    .in("bronze_id", bronzeDeleteIds);
+                if (silverDeleteError) console.error("Silver cleanup for deleted rows failed", silverDeleteError);
+
+                const { error: markDeletedError } = await supabase.schema("bronze").from("transactions")
+                    .update({ status: 'deleted' })
                     .in('id', bronzeDeleteIds);
-                if (bronzeDeleteError) console.error("Batch Bronze deletion failed", bronzeDeleteError);
+                if (markDeletedError) {
+                    // e.g. the bronze_deleted_status migration hasn't been applied
+                    // yet: fall back to the old behaviour rather than leaving the
+                    // rows stuck in 'processing'.
+                    console.error("Marking deleted failed; falling back to physical delete", markDeletedError);
+                    const { error: bronzeDeleteError } = await supabase.schema("bronze").from("transactions")
+                        .delete()
+                        .in('id', bronzeDeleteIds);
+                    if (bronzeDeleteError) console.error("Batch Bronze deletion failed", bronzeDeleteError);
+                }
             }
 
             if (bronzeErrorIds.length > 0) {
