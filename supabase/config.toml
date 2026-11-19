@@ -405,3 +405,19 @@ entrypoint = "./functions/notify-admin/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/notify-admin/*.html" ]
+
+# Plaid sync (implementation-plans/plaid-sync.md)
+[functions.plaid-link]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+# Called by pg_cron with x-cron-secret, or by Sync now with the user's session;
+# the function checks both itself.
+[functions.plaid-sync]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+# Plaid can't send a Supabase JWT; every request is checked against Plaid's signature instead.
+[functions.plaid-webhook]
+verify_jwt = false
+import_map = "./functions/deno.json"
