@@ -3,6 +3,7 @@ import { useOutletContext, useLocation, useNavigate } from 'react-router-dom';
 import { useSessionState } from '../../hooks/useSessionState';
 import { supabase } from '../../lib/supabaseClient';
 import TransactionTable from './TransactionTable';
+import SplitTransactionModal from './SplitTransactionModal';
 import {
     Calendar,
     Filter,
@@ -112,6 +113,11 @@ export default function Analysis() {
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [isDeleting, setIsDeleting] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(null);
+
+    // Split state: { [originalId]: { parent, children } }. `splitTarget` is the row
+    // whose split editor is open.
+    const [splitFamilies, setSplitFamilies] = useState({});
+    const [splitTarget, setSplitTarget] = useState(null);
 
     // Breakdown panel: 'category' (primary, with pie) or 'secondary' (tags)
     const [breakdownMode, setBreakdownMode] = useSessionState('analysis.breakdownMode', 'category');
@@ -246,7 +252,27 @@ export default function Analysis() {
             const { data, error } = await query;
 
             if (error) throw error;
-            setTransactions(data || []);
+
+            // A transaction that has been split is replaced by its parts everywhere:
+            // the table, the filters, and every total. It is still fetched, because the
+            // parts need it to label themselves and to reopen the split editor.
+            const rows = data || [];
+            const parents = rows.filter(t => t.is_split);
+            const visible = rows.filter(t => !t.is_split);
+
+            const families = {};
+            parents.forEach(p => { families[p.id] = { parent: p, children: [] }; });
+            visible.forEach(t => {
+                if (t.split_parent_id && families[t.split_parent_id]) {
+                    families[t.split_parent_id].children.push(t);
+                }
+            });
+            Object.values(families).forEach(f => {
+                f.children.sort((a, b) => (a.split_index ?? 0) - (b.split_index ?? 0));
+            });
+
+            setTransactions(visible);
+            setSplitFamilies(families);
             setSelectedIds(new Set());
         } catch (err) {
             console.error('Error fetching transactions:', err);
@@ -841,6 +867,52 @@ export default function Analysis() {
         }
     };
 
+    // ── Splitting ───────────────────────────────────────────────────────────
+    // One bank transaction can cover several categories — a $75 reimbursement that
+    // is really $50 of dinner and $25 of a ride. Splitting replaces it with parts
+    // that sum to it exactly; the original is kept but hidden from every total.
+
+    // Splitting a part means re-splitting the transaction it came from, so always
+    // hand the editor the original row.
+    const handleOpenSplit = (tx) => {
+        const root = tx.split_parent_id ? splitFamilies[tx.split_parent_id]?.parent : tx;
+        setSplitTarget(root || tx);
+    };
+
+    // Drafts keyed to parts that a re-split just deleted would be saved against
+    // rows that no longer exist.
+    const dropDraftsForFamily = (rootId) => {
+        const stale = new Set([rootId, ...(splitFamilies[rootId]?.children || []).map(c => c.id)]);
+        setEditDrafts(prev => Object.fromEntries(
+            Object.entries(prev).filter(([id]) => !stale.has(id))
+        ));
+    };
+
+    const handleSaveSplit = async (parts) => {
+        const rootId = splitTarget.id;
+        const { error } = await supabase.rpc('split_transaction', {
+            p_transaction_id: rootId,
+            p_parts: parts
+        });
+        if (error) throw new Error(error.message);
+
+        dropDraftsForFamily(rootId);
+        await fetchTransactions();
+        setSplitTarget(null);
+    };
+
+    const handleRemoveSplit = async () => {
+        const rootId = splitTarget.id;
+        const { error } = await supabase.rpc('unsplit_transaction', {
+            p_transaction_id: rootId
+        });
+        if (error) throw new Error(error.message);
+
+        dropDraftsForFamily(rootId);
+        await fetchTransactions();
+        setSplitTarget(null);
+    };
+
     const handleSelectToggle = (id) => {
         const next = new Set(selectedIds);
         if (next.has(id)) {
@@ -866,13 +938,34 @@ export default function Analysis() {
 
     const handleDeleteSelected = async () => {
         const count = selectedIds.size;
-        if (!confirm(`Are you sure you want to delete ${count} transactions? This will remove them from both Silver (processed) and Bronze (raw) tables.`)) return;
+
+        // A split part is a slice of a real bank transaction, not a transaction of
+        // its own — deleting one alone would leave the rest no longer adding up to
+        // anything. Selecting a part therefore removes the whole original.
+        const silverIdSet = new Set(selectedIds);
+        const touchedFamilies = new Set();
+        selectedIds.forEach(id => {
+            const tx = transactions.find(t => t.id === id);
+            const family = tx?.split_parent_id ? splitFamilies[tx.split_parent_id] : null;
+            if (!family) return;
+            touchedFamilies.add(family.parent.id);
+            silverIdSet.add(family.parent.id);
+            family.children.forEach(c => silverIdSet.add(c.id));
+        });
+
+        const splitNote = touchedFamilies.size > 0
+            ? `\n\n${touchedFamilies.size} of these are parts of split transactions — the full original transaction will be removed in each case.`
+            : '';
+        if (!confirm(`Are you sure you want to delete ${count} transactions? This will remove them from both Silver (processed) and Bronze (raw) tables.${splitNote}`)) return;
 
         setIsDeleting(true);
         try {
-            const selectedTxs = transactions.filter(t => selectedIds.has(t.id));
-            const bronzeIds = selectedTxs.map(t => t.bronze_id).filter(Boolean);
-            const silverIds = Array.from(selectedIds);
+            const byId = new Map([
+                ...transactions.map(t => [t.id, t]),
+                ...Object.values(splitFamilies).map(f => [f.parent.id, f.parent])
+            ]);
+            const silverIds = Array.from(silverIdSet);
+            const bronzeIds = silverIds.map(id => byId.get(id)?.bronze_id).filter(Boolean);
 
             // 1. Delete from Silver
             const { error: silverError } = await supabase
@@ -893,7 +986,10 @@ export default function Analysis() {
                 if (bronzeError) throw bronzeError;
             }
 
-            setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)));
+            setTransactions(prev => prev.filter(t => !silverIdSet.has(t.id)));
+            setSplitFamilies(prev => Object.fromEntries(
+                Object.entries(prev).filter(([rootId]) => !silverIdSet.has(rootId))
+            ));
             setSelectedIds(new Set());
         } catch (err) {
             console.error('Error deleting transactions:', err);
@@ -1497,6 +1593,8 @@ export default function Analysis() {
                                 onCreateSecondaryCategory={handleCreateSecondaryCategory}
                                 onRenameSecondaryCategory={handleRenameSecondaryCategory}
                                 onDeleteSecondaryCategory={handleDeleteSecondaryCategory}
+                                onSplit={handleOpenSplit}
+                                splitFamilies={splitFamilies}
                             />
                         </div>
 
@@ -1585,6 +1683,17 @@ export default function Analysis() {
                     </div>
                 )}
             </div>
+
+            {splitTarget && (
+                <SplitTransactionModal
+                    transaction={splitTarget}
+                    existingParts={splitFamilies[splitTarget.id]?.children ?? []}
+                    categories={categoryNames}
+                    onClose={() => setSplitTarget(null)}
+                    onSave={handleSaveSplit}
+                    onRemoveSplit={handleRemoveSplit}
+                />
+            )}
         </div >
     );
 }

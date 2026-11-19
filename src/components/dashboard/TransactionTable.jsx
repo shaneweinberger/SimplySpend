@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit2, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Calendar } from 'lucide-react';
+import { Edit2, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Split } from 'lucide-react';
 import SecondaryCategoryPicker, { SecondaryCategoryChips } from './SecondaryCategoryPicker';
 import { normalizeSecondaryCategories } from '../../lib/secondaryCategories';
 
@@ -20,7 +20,9 @@ export default function TransactionTable({
     secondaryCategoryColor = () => '#64748b',
     onCreateSecondaryCategory,
     onRenameSecondaryCategory,
-    onDeleteSecondaryCategory
+    onDeleteSecondaryCategory,
+    onSplit,
+    splitFamilies = {}
 }) {
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnOrder, setColumnOrder] = useState([
@@ -138,6 +140,20 @@ export default function TransactionTable({
 
     const isAllSelected = displayTransactions.length > 0 && displayTransactions.every(tx => selectedIds.has(tx.id));
     const isSomeSelected = displayTransactions.some(tx => selectedIds.has(tx.id)) && !isAllSelected;
+
+    // Split parts are ordinary rows that happen to point back at the original
+    // transaction they were carved out of. The original itself is never in
+    // `transactions` — it lives in `splitFamilies` purely to label the parts.
+    const splitInfo = (tx) => {
+        if (!tx.split_parent_id) return null;
+        const family = splitFamilies[tx.split_parent_id];
+        if (!family) return null;
+        return {
+            parent: family.parent,
+            index: family.children.findIndex(c => c.id === tx.id) + 1,
+            total: family.children.length
+        };
+    };
 
     // ── Drag and Drop Handlers ──────────────────────────────────────────────────
     const handleDragStart = (e, columnId) => {
@@ -408,23 +424,36 @@ export default function TransactionTable({
                     </td>
                 );
             }
-            case 'description':
+            case 'description': {
+                const split = splitInfo(tx);
                 return (
                     <td key="description" className="px-6 py-4">
-                        {isEditingMode ? (
-                            <input
-                                className="w-full bg-transparent p-0 border-b border-dashed border-slate-400 hover:border-accent-border focus:border-solid focus:border-accent outline-none text-sm font-medium text-slate-900 transition-colors"
-                                value={editDrafts[tx.id]?.description ?? tx.description}
-                                onChange={(e) => onDraftChange(tx.id, 'description', e.target.value)}
-                                placeholder="Description..."
-                            />
-                        ) : (
-                            <span className="text-sm font-medium text-slate-900 break-words block">
-                                {tx.description}
-                            </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {split && (
+                                <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-accent-light text-accent-light-text shrink-0 cursor-help"
+                                    title={`Part ${split.index} of ${split.total} of "${split.parent.description}" (${parseFloat(split.parent.amount) > 0 ? '+' : ''}$${Math.abs(split.parent.amount).toFixed(2)})`}
+                                >
+                                    <Split size={10} />
+                                    {split.index}/{split.total}
+                                </span>
+                            )}
+                            {isEditingMode ? (
+                                <input
+                                    className="w-full bg-transparent p-0 border-b border-dashed border-slate-400 hover:border-accent-border focus:border-solid focus:border-accent outline-none text-sm font-medium text-slate-900 transition-colors"
+                                    value={editDrafts[tx.id]?.description ?? tx.description}
+                                    onChange={(e) => onDraftChange(tx.id, 'description', e.target.value)}
+                                    placeholder="Description..."
+                                />
+                            ) : (
+                                <span className="text-sm font-medium text-slate-900 break-words block">
+                                    {tx.description}
+                                </span>
+                            )}
+                        </div>
                     </td>
                 );
+            }
             case 'transaction_account':
                 return (
                     <td key="transaction_account" className="px-6 py-4">
@@ -528,17 +557,36 @@ export default function TransactionTable({
                 <thead>
                     <tr className="bg-slate-50/50 text-slate-500 text-[11px] font-bold uppercase tracking-wider select-none">
                         {columnOrder.map(colId => columnHeaders[colId])}
+                        {/* Kept outside columnOrder: an action rail, not reorderable data */}
+                        {isEditingMode && onSplit && <th key="actions" className="px-4 py-4 w-12" />}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
-                    {displayTransactions.map((tx) => (
-                        <tr
-                            key={tx.id}
-                            className={`hover:bg-slate-50/50 transition-colors group relative ${selectedIds.has(tx.id) ? 'bg-accent-light/20' : ''}`}
-                        >
-                            {columnOrder.map(colId => renderCell(colId, tx))}
-                        </tr>
-                    ))}
+                    {displayTransactions.map((tx) => {
+                        const split = splitInfo(tx);
+                        return (
+                            <tr
+                                key={tx.id}
+                                className={`hover:bg-slate-50/50 transition-colors group relative ${selectedIds.has(tx.id) ? 'bg-accent-light/20' : ''}`}
+                            >
+                                {columnOrder.map(colId => renderCell(colId, tx))}
+                                {isEditingMode && onSplit && (
+                                    <td key="actions" className="px-4 py-4 text-right">
+                                        <button
+                                            onClick={() => onSplit(tx)}
+                                            title={split ? 'Edit this split' : 'Split into multiple transactions'}
+                                            className={`p-1.5 rounded-lg transition-all ${split
+                                                ? 'text-accent bg-accent-light/60 hover:bg-accent-light'
+                                                : 'text-slate-300 hover:text-accent hover:bg-accent-light/40 opacity-0 group-hover:opacity-100 focus:opacity-100'
+                                                }`}
+                                        >
+                                            <Split size={15} />
+                                        </button>
+                                    </td>
+                                )}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

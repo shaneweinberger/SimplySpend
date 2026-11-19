@@ -186,7 +186,9 @@ export default function Overview() {
         try {
             const { data, error } = await supabase.from('silver_transactions').select('*').order('effective_date', { ascending: false });
             if (error) throw error;
-            setTransactions(data || []);
+            // A split transaction is represented by its parts, which sum to it — the
+            // original is kept only for lineage and would double-count every total.
+            setTransactions((data || []).filter(t => !t.is_split));
         } catch (err) { console.error('Error fetching transactions:', err); }
     };
 
