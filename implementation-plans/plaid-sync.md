@@ -65,15 +65,16 @@ pg_cron (every 4h) / Sync now ───────▶ plaid-sync ────�
    Sandbox testing there.
 3. **Secrets** (Supabase dashboard → Edge Functions → Secrets, or CLI):
    ```bash
-   supabase secrets set PLAID_CLIENT_ID=... PLAID_SECRET_SANDBOX=... PLAID_ENV=sandbox PLAID_REFRESH_ENABLED=true PLAID_CRON_SECRET=$(openssl rand -hex 32)
+   supabase secrets set PLAID_CLIENT_ID=... PLAID_SECRET_SANDBOX=... PLAID_ENV=sandbox PLAID_REFRESH_ENABLED=true PLAID_DAYS_REQUESTED=730 PLAID_CRON_SECRET=<openssl rand -hex 32>
    ```
    Optional: `PLAID_COUNTRY_CODES` (default `CA`), `PLAID_DAYS_REQUESTED`
    (default 90), `PLAID_REDIRECT_URI` (only if Plaid asks for one for OAuth).
 4. **Migrations first, then functions.** `process-transactions` now writes
    `is_pending`, so deploying it before the migration would break CSV processing.
-   ```bash
-   supabase db push
-   ```
+   Don't use `supabase db push`: the remote migration history is empty (earlier
+   migrations were run by hand), so it would try to re-run everything since 2024.
+   Paste `20261119120000_plaid_sync.sql`, then `20261119120100_plaid_sync_schedule.sql`,
+   into the SQL editor and run each. Both are safe to run twice.
    ```bash
    supabase functions deploy plaid-link plaid-sync plaid-webhook process-transactions
    ```
