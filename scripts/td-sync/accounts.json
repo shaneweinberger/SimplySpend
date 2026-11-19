@@ -1,0 +1,4 @@
+[
+    { "easyweb": "TD STUDENT CHEQUING ACCOUNT", "finsight": "TD Debit", "kind": "chequing" },
+    { "easyweb": "TD CASH BACK VISA* CARD", "finsight": "TD Credit Card", "kind": "visa" }
+]

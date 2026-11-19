@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# TD EasyWeb sync: local config (account mapping); never commit
+scripts/td-sync/*.local.json

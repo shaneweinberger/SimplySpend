@@ -54,7 +54,13 @@ npm run sync-td
 
 ---
 
-## Phase 0: EasyWeb discovery run (with you, ~1 hr)
+## Phase 0: EasyWeb discovery run (with you, ~1 hr): ✅ run 2026-11-12
+
+Findings are in `scripts/td-sync/README.md`. The biggest one: **Visa downloads
+work by statement period, not by date range**, so Phase 4/5 picks every cycle
+that overlaps the missing range instead of entering dates. The list includes
+the current cycle ("… to today (Since last statement)"), so recent Visa
+transactions are available.
 
 The plan depends on EasyWeb's pages, so the first step is one run where you're
 watching. Record:
@@ -108,6 +114,13 @@ and never get categorized.
       could both trigger processing at once.
 
 ---
+
+> **Phases 3–7: ✅ built 2026-11-12** in `scripts/td-sync/` (`npm run sync-td`).
+> Tested end to end against fake EasyWeb pages that mirror the Phase 0
+> structure. The first real run against EasyWeb should be `--dry-run`.
+> Changes from the plan below: account names live in a committed
+> `accounts.json` (names only, no numbers), with an optional gitignored
+> `accounts.local.json` override. The Supabase URL reuses `VITE_SUPABASE_URL`.
 
 ## Phase 3: Script setup (~1 hr)
 

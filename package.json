@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test src/utils/*.test.js"
+    "test": "node --test src/utils/*.test.js scripts/td-sync/*.test.mjs",
+    "td-discover": "node scripts/td-sync/discover.mjs",
+    "sync-td": "node scripts/td-sync/sync.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.91.1",
@@ -31,6 +33,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "playwright": "^1.49.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "vite": "^7.2.4"
