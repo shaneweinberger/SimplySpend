@@ -16,10 +16,15 @@ const formatCents = (cents) => `$${(Math.abs(cents) / 100).toFixed(2)}`;
 
 const centsToInput = (cents) => (Math.abs(cents) / 100).toFixed(2);
 
+// The date a row actually counts on, as YYYY-MM-DD for <input type="date">.
+const rowDate = (row) =>
+    String(row?.effective_date || row?.recognized_date || row?.transaction_date || '').slice(0, 10);
+
 let nextKey = 0;
 const makePart = (overrides = {}) => ({
     key: `part-${nextKey++}`,
     amount: '',
+    date: '',
     description: '',
     category: '',
     ...overrides
@@ -34,21 +39,23 @@ export default function SplitTransactionModal({
     onRemoveSplit
 }) {
     const isEditingExisting = existingParts.length > 0;
+    const originalDate = rowDate(transaction);
 
     const [parts, setParts] = useState(() => {
         if (isEditingExisting) {
             return existingParts.map(child => makePart({
                 amount: centsToInput(Math.round(parseFloat(child.amount) * 100)),
+                date: rowDate(child) || originalDate,
                 description: child.description || '',
                 category: child.category || ''
             }));
         }
-        // A fresh split starts as two empty parts carrying the original's category —
-        // the point of splitting is to re-categorize, but starting from where the
-        // transaction already sits beats starting from Uncategorized.
+        // A fresh split starts as two empty parts carrying the original's category and
+        // date — the point of splitting is to re-categorize (and maybe re-date), but
+        // starting from where the transaction already sits beats starting blank.
         return [
-            makePart({ category: transaction.category || '' }),
-            makePart({ category: transaction.category || '' })
+            makePart({ category: transaction.category || '', date: originalDate }),
+            makePart({ category: transaction.category || '', date: originalDate })
         ];
     });
 
@@ -90,8 +97,13 @@ export default function SplitTransactionModal({
         setError(null);
     };
 
+    // New parts take the previous part's date: expenses spread over a few days are
+    // usually entered in order, so this is the likeliest next date.
     const addPart = () => {
-        setParts(prev => [...prev, makePart({ category: transaction.category || '' })]);
+        setParts(prev => [...prev, makePart({
+            category: transaction.category || '',
+            date: prev[prev.length - 1]?.date || originalDate
+        })]);
         setError(null);
     };
 
@@ -134,6 +146,7 @@ export default function SplitTransactionModal({
             const sign = isInflow ? 1 : -1;
             await onSave(parts.map(p => ({
                 amount: (sign * (toCents(p.amount) ?? 0)) / 100,
+                date: p.date || originalDate,
                 description: p.description.trim(),
                 category: p.category
             })));
@@ -165,7 +178,7 @@ export default function SplitTransactionModal({
             onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}
         >
             <div
-                className="w-full max-w-2xl my-auto bg-white rounded-2xl border border-slate-200 shadow-2xl shadow-slate-900/20 animate-in zoom-in-95 duration-150"
+                className="w-full max-w-3xl my-auto bg-white rounded-2xl border border-slate-200 shadow-2xl shadow-slate-900/20 animate-in zoom-in-95 duration-150"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 {/* ── Header: what is being split ─────────────────────────────── */}
@@ -221,8 +234,8 @@ export default function SplitTransactionModal({
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-[7.5rem_1fr_9.5rem_2rem] gap-2 px-1">
-                        {['Amount', 'Description', 'Category', ''].map((label, i) => (
+                    <div className="grid grid-cols-[7.5rem_9rem_1fr_9.5rem_2rem] gap-2 px-1">
+                        {['Amount', 'Date', 'Description', 'Category', ''].map((label, i) => (
                             <span key={i} className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 {label}
                             </span>
@@ -230,7 +243,7 @@ export default function SplitTransactionModal({
                     </div>
 
                     {parts.map((part, index) => (
-                        <div key={part.key} className="grid grid-cols-[7.5rem_1fr_9.5rem_2rem] gap-2 items-center">
+                        <div key={part.key} className="grid grid-cols-[7.5rem_9rem_1fr_9.5rem_2rem] gap-2 items-center">
                             <div className="relative">
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">
                                     {isInflow ? '+$' : '$'}
@@ -247,6 +260,16 @@ export default function SplitTransactionModal({
                                     }`}
                                 />
                             </div>
+
+                            <input
+                                type="date"
+                                value={part.date}
+                                onChange={(e) => updatePart(part.key, 'date', e.target.value)}
+                                title={part.date && part.date !== originalDate ? 'Moved from the original transaction date' : undefined}
+                                className={`w-full text-sm font-medium bg-white border rounded-xl px-2.5 py-2 outline-none transition-colors focus:ring-2 focus:ring-accent-ring focus:border-accent-border ${
+                                    part.date && part.date !== originalDate ? 'text-accent border-accent-border' : 'text-slate-700 border-slate-200'
+                                }`}
+                            />
 
                             <input
                                 type="text"

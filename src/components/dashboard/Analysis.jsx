@@ -257,12 +257,33 @@ export default function Analysis() {
             // the table, the filters, and every total. It is still fetched, because the
             // parts need it to label themselves and to reopen the split editor.
             const rows = data || [];
-            const parents = rows.filter(t => t.is_split);
             const visible = rows.filter(t => !t.is_split);
 
+            // Parts can be dated apart from their original (and from each other), so
+            // the date filter above can return a part without its original, or only
+            // some of its siblings. Load every family touched by this range in full —
+            // the split editor needs all parts, and the labels need the original.
+            const familyIds = [...new Set([
+                ...rows.filter(t => t.is_split).map(t => t.id),
+                ...rows.filter(t => t.split_parent_id).map(t => t.split_parent_id)
+            ])];
+
+            let familyRows = rows.filter(t => t.is_split || t.split_parent_id);
+            if (filterType !== 'all' && familyIds.length > 0) {
+                const idList = familyIds.join(',');
+                const { data: famData, error: famError } = await supabase
+                    .from('silver_transactions')
+                    .select('*')
+                    .or(`id.in.(${idList}),split_parent_id.in.(${idList})`);
+                if (famError) throw famError;
+                familyRows = famData || [];
+            }
+
             const families = {};
-            parents.forEach(p => { families[p.id] = { parent: p, children: [] }; });
-            visible.forEach(t => {
+            familyRows.filter(t => t.is_split).forEach(p => {
+                families[p.id] = { parent: p, children: [] };
+            });
+            familyRows.forEach(t => {
                 if (t.split_parent_id && families[t.split_parent_id]) {
                     families[t.split_parent_id].children.push(t);
                 }
