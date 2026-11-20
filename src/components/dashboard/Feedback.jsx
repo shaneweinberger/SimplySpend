@@ -31,6 +31,11 @@ const STATUS_TABS = [
     { value: 'complete',    label: 'Complete',    icon: CheckCircle2 },
 ];
 
+// The feedback board admin can edit, move and delete any ticket. This only shows
+// the controls — the database enforces it (is_feedback_admin() in
+// supabase/migrations/20261120130000_feedback_admin.sql). Keep the two in sync.
+const FEEDBACK_ADMIN_EMAILS = ['dev.shanewein@gmail.com'];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getTypeConfig(value) {
@@ -87,10 +92,11 @@ function VoteButton({ count, voted, onVote, disabled }) {
     );
 }
 
-function TicketCard({ ticket, currentUserId, onVote, onDelete, onEdit }) {
+function TicketCard({ ticket, currentUserId, isAdmin, onVote, onDelete, onEdit, onStatusChange }) {
     const voted   = ticket.user_has_voted;
     const isOwner = currentUserId && ticket.user_id === currentUserId;
-    const canEdit = isOwner && ticket.status === 'submitted';
+    const canEdit = isAdmin || (isOwner && ticket.status === 'submitted');
+    const canDelete = isAdmin || isOwner;
     const cfg     = getTypeConfig(ticket.type);
     const [deleteHovered, setDeleteHovered] = useState(false);
     const [editHovered, setEditHovered] = useState(false);
@@ -126,12 +132,12 @@ function TicketCard({ ticket, currentUserId, onVote, onDelete, onEdit }) {
                                 color: editHovered ? '#818cf8' : '#4b5563',
                             }}
                             className="p-1.5 rounded-lg transition-all duration-150"
-                            title="Edit your ticket"
+                            title={isOwner ? 'Edit your ticket' : 'Edit ticket (admin)'}
                         >
                             <Edit2 size={13} />
                         </button>
                     )}
-                    {isOwner && (
+                    {canDelete && (
                         <button
                             onClick={e => { e.stopPropagation(); onDelete(ticket.id); }}
                             onMouseEnter={() => setDeleteHovered(true)}
@@ -141,7 +147,7 @@ function TicketCard({ ticket, currentUserId, onVote, onDelete, onEdit }) {
                                 color: deleteHovered ? '#f87171' : '#4b5563',
                             }}
                             className="p-1.5 rounded-lg transition-all duration-150"
-                            title="Delete your ticket"
+                            title={isOwner ? 'Delete your ticket' : 'Delete ticket (admin)'}
                         >
                             <Trash2 size={13} />
                         </button>
@@ -166,9 +172,30 @@ function TicketCard({ ticket, currentUserId, onVote, onDelete, onEdit }) {
                     {timeAgo(ticket.created_at)} ·{' '}
                     {ticket.vote_count === 1 ? '1 upvote' : `${ticket.vote_count} upvotes`}
                 </p>
-                {isOwner && (
-                    <span style={{ color: '#4b5563' }} className="text-[10px] italic">You</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {isOwner && (
+                        <span style={{ color: '#4b5563' }} className="text-[10px] italic">You</span>
+                    )}
+                    {isAdmin && (
+                        <select
+                            value={ticket.status}
+                            onChange={e => onStatusChange(ticket.id, e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            title="Move ticket (admin)"
+                            aria-label="Ticket status"
+                            style={{
+                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                color: '#cbd5e1',
+                            }}
+                            className="text-[11px] font-semibold rounded-lg px-2 py-1 cursor-pointer focus:outline-none focus:border-emerald-600"
+                        >
+                            {STATUS_TABS.map(({ value, label }) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -187,16 +214,19 @@ function EditModal({ ticket, onClose, onSuccess }) {
         if (!description.trim()) { setError('Please write a description.'); return; }
         setLoading(true);
         setError('');
-        const { error: err } = await supabase
+        const { data, error: err } = await supabase
             .from('feedback_tickets')
             .update({
                 type,
                 page,
                 description: description.trim(),
             })
-            .eq('id', ticket.id);
+            .eq('id', ticket.id)
+            .select('id');
         setLoading(false);
         if (err) { setError('Failed to save. Please try again.'); return; }
+        // Row-level security filters a forbidden update down to zero rows rather than erroring.
+        if (!data?.length) { setError("You don't have permission to edit this ticket."); return; }
         onSuccess();
         onClose();
     };
@@ -451,6 +481,8 @@ function SubmitModal({ currentUserId, onClose, onSuccess }) {
 
 export default function Feedback() {
     const [currentUserId, setCurrentUserId] = useState(null);
+    const [isAdmin,       setIsAdmin]       = useState(false);
+    const [actionError,   setActionError]   = useState('');
     const [activeTab,     setActiveTab]     = useState('submitted');
     const [tickets,       setTickets]       = useState([]);
     const [loading,       setLoading]       = useState(true);
@@ -462,6 +494,8 @@ export default function Feedback() {
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
             setCurrentUserId(data?.user?.id ?? null);
+            const email = (data?.user?.email || '').toLowerCase();
+            setIsAdmin(FEEDBACK_ADMIN_EMAILS.includes(email));
         });
     }, []);
 
@@ -545,6 +579,23 @@ export default function Feedback() {
         await supabase.from('feedback_tickets').delete().eq('id', ticketId);
     };
 
+    // Admin only. Tabs are per status, so a moved ticket leaves the current tab.
+    // `.select()` returns the rows actually changed: an empty result means the
+    // database refused the update (e.g. the admin migration hasn't been run).
+    const handleStatusChange = async (ticketId, status) => {
+        setActionError('');
+        const { data, error } = await supabase
+            .from('feedback_tickets')
+            .update({ status })
+            .eq('id', ticketId)
+            .select('id');
+        if (error || !data?.length) {
+            setActionError(error?.message || 'Could not move this ticket — you may not have permission.');
+            return;
+        }
+        setTickets(prev => prev.filter(t => t.id !== ticketId));
+    };
+
     const handleEdit = (ticket) => {
         setEditingTicket(ticket);
     };
@@ -622,6 +673,14 @@ export default function Feedback() {
             {/* ── Ticket Grid ── */}
             <div className="flex-1 px-8 py-8">
                 <div className="max-w-5xl mx-auto">
+                    {actionError && (
+                        <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm mb-4">
+                            <AlertCircle size={14} /> {actionError}
+                            <button onClick={() => setActionError('')} className="ml-auto p-0.5 hover:opacity-70" aria-label="Dismiss">
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
                             <Loader2 size={28} className="animate-spin" style={{ color: '#4b5563' }} />
@@ -658,9 +717,11 @@ export default function Feedback() {
                                     key={ticket.id}
                                     ticket={ticket}
                                     currentUserId={currentUserId}
+                                    isAdmin={isAdmin}
                                     onVote={handleVote}
                                     onDelete={handleDelete}
                                     onEdit={handleEdit}
+                                    onStatusChange={handleStatusChange}
                                 />
                             ))}
                         </div>
