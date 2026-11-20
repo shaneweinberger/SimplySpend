@@ -21,14 +21,69 @@ import { useProcessing } from '../../lib/ProcessingContext';
 import { CATEGORY_COLORS } from '../../lib/categoryColors';
 
 // ─── Default color palette for new categories ────────────────────────────────
-const DEFAULT_COLORS = [
-    '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#ec4899', '#06b6d4', '#14b8a6', '#f97316', '#3b82f6',
-    '#84cc16', '#d946ef', '#f43f5e', '#0ea5e9', '#eab308'
-];
+// The brand palette, so new categories match the defaults, the bulk "Suggested"
+// colors and the chart fallbacks in Analysis.
+const DEFAULT_COLORS = CATEGORY_COLORS;
+
+// ─── Brand palette swatches ──────────────────────────────────────────────────
+// One-click picks from the brand palette, next to the free color picker.
+function ColorSwatches({ value, onChange }) {
+    const current = (value || '').toLowerCase();
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {CATEGORY_COLORS.map(color => {
+                const selected = color.toLowerCase() === current;
+                return (
+                    <button
+                        key={color}
+                        type="button"
+                        onClick={() => onChange(color)}
+                        title={color}
+                        aria-label={`Use color ${color}`}
+                        aria-pressed={selected}
+                        className={`w-5 h-5 rounded-full border border-black/10 transition-all hover:scale-110 ${selected ? 'ring-2 ring-offset-1 ring-accent' : ''}`}
+                        style={{ backgroundColor: color }}
+                    />
+                );
+            })}
+        </div>
+    );
+}
 
 // ─── Confirmation Modal ──────────────────────────────────────────────────────
-function ConfirmModal({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, danger = false }) {
+// Pass `secondaryLabel` + `onSecondary` for a third, middle choice.
+function ConfirmModal({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, danger = false, secondaryLabel, onSecondary }) {
+    if (onSecondary) {
+        return (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                <div className="bg-surface-card rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
+                    <p className="text-sm text-slate-500 mb-6 leading-relaxed whitespace-pre-line">{message}</p>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={onConfirm}
+                            className="w-full px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-accent hover:bg-accent-hover transition-all shadow-sm"
+                        >
+                            {confirmLabel}
+                        </button>
+                        <button
+                            onClick={onSecondary}
+                            className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all"
+                        >
+                            {secondaryLabel}
+                        </button>
+                        <button
+                            onClick={onCancel}
+                            className="w-full px-4 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-all"
+                        >
+                            {cancelLabel}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
             <div className="bg-surface-card rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
@@ -353,36 +408,97 @@ export default function AIProcessing() {
         setEditCatColor('');
     };
 
-    const saveEditCategory = () => {
+    // Saves the category edit. With `relabelTransactions`, every transaction still
+    // labelled with the old name moves to the new one, so a rename carries through
+    // the history instead of orphaning it under a name that no longer exists.
+    const applyCategoryEdit = async (relabelTransactions) => {
+        setConfirmModal(null);
+        const oldName = editingCat.name;
+        const newName = editCatName.trim();
+        try {
+            const { data, error } = await supabase
+                .from('user_categories')
+                .update({ name: newName, color: editCatColor })
+                .eq('id', editingCat.id)
+                .select();
+            if (error) throw error;
+            setCategories(prev => prev.map(c => c.id === editingCat.id ? data[0] : c).sort((a, b) => a.name.localeCompare(b.name)));
+            cancelEditCategory();
+
+            if (relabelTransactions && newName !== oldName) {
+                const { error: txError, count } = await supabase
+                    .from('silver_transactions')
+                    .update({ category: newName }, { count: 'exact' })
+                    .eq('category', oldName);
+                if (txError) {
+                    throw new Error(`Category renamed, but its transactions could not be updated: ${txError.message}`);
+                }
+                setToast({
+                    message: `Renamed to "${newName}" and updated ${count ?? 'all'} transaction${count === 1 ? '' : 's'}.`,
+                    type: 'success'
+                });
+            }
+        } catch (err) {
+            if (err.code === '23505' || err.message?.includes('unique constraint')) {
+                setError(`A category named "${newName}" already exists.`);
+            } else {
+                setError(err.message);
+            }
+        }
+    };
+
+    const saveEditCategory = async () => {
         // Diff detection: if nothing changed, just close
-        const nameChanged = editCatName.trim() !== editingCat.name;
+        const oldName = editingCat.name;
+        const newName = editCatName.trim();
+        const nameChanged = newName !== oldName;
         const colorChanged = editCatColor !== (editingCat.color || DEFAULT_COLORS[0]);
 
+        if (!newName) return;
         if (!nameChanged && !colorChanged) {
             cancelEditCategory();
             return;
         }
 
+        // A rename leaves past transactions on the old name unless they are moved
+        // too, so ask — but only when there is something to move.
+        let txCount = 0;
+        if (nameChanged) {
+            const { count, error } = await supabase
+                .from('silver_transactions')
+                .select('id', { count: 'exact', head: true })
+                .eq('category', oldName);
+            if (error) {
+                setError(error.message);
+                return;
+            }
+            txCount = count ?? 0;
+        }
+
+        if (txCount > 0) {
+            // Rules are free text read by the AI, so they can't be rewritten safely —
+            // point them out instead.
+            const ruleCount = rules.filter(r => (r.rule_text || '').toLowerCase().includes(oldName.toLowerCase())).length;
+            const ruleNote = ruleCount > 0
+                ? `\n\n${ruleCount} rule${ruleCount === 1 ? ' mentions' : 's mention'} "${oldName}" — update ${ruleCount === 1 ? 'it' : 'them'} by hand so new transactions use the new name.`
+                : '';
+            setConfirmModal({
+                title: `Rename "${oldName}" to "${newName}"?`,
+                message: `${txCount} transaction${txCount === 1 ? ' is' : 's are'} labelled "${oldName}". Would you like to update all previous transactions with this label?${ruleNote}`,
+                confirmLabel: `Update ${txCount} transaction${txCount === 1 ? '' : 's'}`,
+                secondaryLabel: 'Rename category only',
+                onConfirm: () => applyCategoryEdit(true),
+                onSecondary: () => applyCategoryEdit(false),
+                onCancel: () => setConfirmModal(null)
+            });
+            return;
+        }
+
         setConfirmModal({
             title: 'Save changes to category?',
-            message: `Update "${editingCat.name}" with your changes.`,
+            message: `Update "${oldName}" with your changes.`,
             confirmLabel: 'Save Changes',
-            onConfirm: async () => {
-                setConfirmModal(null);
-                try {
-                    const { data, error } = await supabase
-                        .from('user_categories')
-                        .update({ name: editCatName.trim(), color: editCatColor })
-                        .eq('id', editingCat.id)
-                        .select();
-                    if (error) throw error;
-                    setCategories(prev => prev.map(c => c.id === editingCat.id ? data[0] : c).sort((a, b) => a.name.localeCompare(b.name)));
-
-                    cancelEditCategory();
-                } catch (err) {
-                    setError(err.message);
-                }
-            },
+            onConfirm: () => applyCategoryEdit(false),
             onCancel: () => setConfirmModal(null)
         });
     };
@@ -897,6 +1013,7 @@ export default function AIProcessing() {
                                             autoFocus
                                         />
                                     </div>
+                                    <ColorSwatches value={newCatColor} onChange={setNewCatColor} />
                                     <div className="flex justify-end">
                                         <button
                                             type="submit"
@@ -943,7 +1060,8 @@ export default function AIProcessing() {
 
                                             {editingCat?.id === cat.id ? (
                                                 /* Edit inline */
-                                                <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-accent-light/50 border border-accent-light">
+                                                <div className="px-2 py-2 rounded-lg bg-accent-light/50 border border-accent-light space-y-2">
+                                                <div className="flex items-center gap-2">
                                                     <div
                                                         className="relative shrink-0 w-7 h-7 rounded-full border border-accent-ring overflow-hidden cursor-pointer"
                                                         style={{ backgroundColor: editCatColor }}
@@ -969,6 +1087,8 @@ export default function AIProcessing() {
                                                     <button onClick={cancelEditCategory} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
                                                         <X size={14} />
                                                     </button>
+                                                </div>
+                                                <ColorSwatches value={editCatColor} onChange={setEditCatColor} />
                                                 </div>
                                             ) : (
                                                 /* Display row */
@@ -1372,6 +1492,8 @@ export default function AIProcessing() {
                     title={confirmModal.title}
                     message={confirmModal.message}
                     confirmLabel={confirmModal.confirmLabel}
+                    secondaryLabel={confirmModal.secondaryLabel}
+                    onSecondary={confirmModal.onSecondary}
                     danger={confirmModal.danger}
                     onConfirm={confirmModal.onConfirm}
                     onCancel={confirmModal.onCancel}
