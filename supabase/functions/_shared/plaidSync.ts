@@ -195,7 +195,7 @@ export async function syncItem(db: SupabaseClient, item: PlaidItemRow, { refresh
         // fails, the next run re-applies the same changes safely.
         const insertRows = await Promise.all(plan.inserts.map(async (ins) => ({
             user_id: item.user_id,
-            file_id: await monthlyFileId(item.id, ins.raw_data.Date),
+            file_id: await monthlyFileId(item.id, ins.transaction_account, ins.raw_data.Date),
             file_name: monthlyFileName(item.institution_name, ins.raw_data.Date),
             transaction_account: ins.transaction_account,
             raw_data: ins.raw_data,

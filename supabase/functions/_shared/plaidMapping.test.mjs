@@ -242,11 +242,12 @@ test('account suggestions match by kind, only when unambiguous', () => {
     assert.equal(suggestAccountMapping({ type: 'credit' }, []), null);
 });
 
-test('monthly file IDs are stable per connection and month', async () => {
-    const a = await monthlyFileId('item-1', '2026-11-02');
-    assert.equal(a, await monthlyFileId('item-1', '2026-11-29'));
-    assert.notEqual(a, await monthlyFileId('item-1', '2026-12-01'));
-    assert.notEqual(a, await monthlyFileId('item-2', '2026-11-02'));
+test('monthly file IDs are stable per connection, account and month', async () => {
+    const a = await monthlyFileId('item-1', 'TD Debit', '2026-11-02');
+    assert.equal(a, await monthlyFileId('item-1', 'TD Debit', '2026-11-29'));
+    assert.notEqual(a, await monthlyFileId('item-1', 'TD Debit', '2026-12-01'));
+    assert.notEqual(a, await monthlyFileId('item-1', 'TD Credit Card', '2026-11-02'), 'accounts never share a file');
+    assert.notEqual(a, await monthlyFileId('item-2', 'TD Debit', '2026-11-02'));
     assert.match(a, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     assert.equal(monthlyFileName('TD Canada Trust', '2026-11-18'), 'Plaid · TD Canada Trust · Nov 2026');
 });

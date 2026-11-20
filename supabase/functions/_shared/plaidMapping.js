@@ -230,11 +230,13 @@ export function suggestAccountMapping(plaidAccount, accountNames) {
 }
 
 /**
- * A stable UUID for "this connection, this month", so the Processing screen
- * shows Plaid rows as one upload per bank per month instead of one per sync.
+ * A stable UUID for "this connection, this account, this month", so the
+ * Processing screen shows Plaid rows as one upload per account per month
+ * instead of one per sync. (The upload list labels each file with a single
+ * account, so a file must never mix accounts.)
  */
-export async function monthlyFileId(plaidItemId, isoDate) {
-    const key = `plaid:${plaidItemId}:${String(isoDate).slice(0, 7)}`;
+export async function monthlyFileId(plaidItemId, account, isoDate) {
+    const key = `plaid:${plaidItemId}:${account}:${String(isoDate).slice(0, 7)}`;
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)));
     const b = digest.slice(0, 16);
     b[6] = (b[6] & 0x0f) | 0x50; // version 5-style
