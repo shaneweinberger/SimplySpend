@@ -438,6 +438,14 @@ export default function TransactionTable({
                                     {split.index}/{split.total}
                                 </span>
                             )}
+                            {tx.is_pending && (
+                                <span
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 shrink-0 cursor-help"
+                                    title="Not posted yet. The amount or date may change when your bank posts it."
+                                >
+                                    Pending
+                                </span>
+                            )}
                             {isEditingMode ? (
                                 <input
                                     className="w-full bg-transparent p-0 border-b border-dashed border-slate-400 hover:border-accent-border focus:border-solid focus:border-accent outline-none text-sm font-medium text-slate-900 transition-colors"

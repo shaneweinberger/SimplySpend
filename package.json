@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test src/utils/*.test.js scripts/td-sync/*.test.mjs",
+    "test": "node --test src/utils/*.test.js scripts/td-sync/*.test.mjs supabase/functions/_shared/*.test.mjs",
     "td-discover": "node scripts/td-sync/discover.mjs",
     "sync-td": "node scripts/td-sync/sync.mjs"
   },
@@ -20,6 +20,7 @@
     "papaparse": "^5.5.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-plaid-link": "^4.2.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0"
   },

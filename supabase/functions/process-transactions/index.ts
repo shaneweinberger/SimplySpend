@@ -307,7 +307,9 @@ serve(async (req: { method: string; }) => {
                     amount,
                     date,
                     transaction_type: amount < 0 ? 'Expenditure' : 'Income',
-                    transaction_account: tx.transaction_account
+                    transaction_account: tx.transaction_account,
+                    // Card purchases synced from Plaid can arrive before they post.
+                    is_pending: raw.Plaid?.pending === true
                 };
             });
 
@@ -492,6 +494,7 @@ serve(async (req: { method: string; }) => {
                         transaction_date: codeData.date,
                         transaction_type: codeData.transaction_type,
                         transaction_account: codeData.transaction_account,
+                        is_pending: codeData.is_pending,
                         processed_at: new Date().toISOString(),
                         is_edited: false
                     });

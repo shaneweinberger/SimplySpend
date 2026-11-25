@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { theme } from '../../theme';
+import ConnectedBanks from './ConnectedBanks';
 
 export default function Settings() {
     const [loading, setLoading] = useState(false);
@@ -195,6 +196,8 @@ export default function Settings() {
                             )}
                         </div>
                     </div>
+
+                    <ConnectedBanks />
                 </div>
             </div>
         </div>
