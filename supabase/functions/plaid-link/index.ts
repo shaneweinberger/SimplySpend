@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
                 if (!item) return json({ error: "Connection not found." }, 404);
                 await db.from("plaid_items").update({ status: "ok", error_code: null }).eq("id", item.id);
                 const [fresh] = await loadItems(db, { itemId: item.id });
-                const summary = fresh ? await syncItem(db, fresh) : null;
+                const summary = fresh ? await syncItem(db, fresh, { trigger: "reconnect" }) : null;
                 if (summary && summary.inserted + summary.resurrected > 0) runInBackground(runProcessing());
                 return json({ ok: true, summary });
             }

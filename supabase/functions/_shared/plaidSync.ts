@@ -109,11 +109,46 @@ export async function saveAccounts(db: SupabaseClient, item: PlaidItemRow) {
     await recordNewAccounts(db, item, res.accounts, new Set());
 }
 
+export type SyncTrigger = "schedule" | "webhook" | "manual" | "reconnect";
+
 /**
- * One full sync of one connection. Never throws for Plaid problems: they're
- * recorded on the connection (needs_reauth / error) and returned in the summary.
+ * One full sync of one connection, recorded in plaid_sync_runs (the Bank sync
+ * history). Never throws for Plaid problems: they're recorded on the
+ * connection (needs_reauth / error) and returned in the summary.
  */
-export async function syncItem(db: SupabaseClient, item: PlaidItemRow, { refresh = false } = {}): Promise<SyncSummary> {
+export async function syncItem(
+    db: SupabaseClient,
+    item: PlaidItemRow,
+    { refresh = false, trigger }: { refresh?: boolean; trigger: SyncTrigger },
+): Promise<SyncSummary> {
+    const summary = await runSync(db, item, { refresh });
+    await recordRun(db, item, trigger, summary);
+    return summary;
+}
+
+/** Best effort: history is for display, so a failure here never fails the sync. */
+async function recordRun(db: SupabaseClient, item: PlaidItemRow, trigger: SyncTrigger, summary: SyncSummary) {
+    try {
+        const { error } = await db.from("plaid_sync_runs").insert({
+            plaid_item_id: item.id,
+            user_id: item.user_id,
+            trigger,
+            ok: summary.ok,
+            inserted: summary.inserted + summary.resurrected,
+            updated: summary.updated,
+            removed: summary.removed,
+            summary,
+        });
+        if (error) throw error;
+        // Keep 90 days of history.
+        const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+        await db.from("plaid_sync_runs").delete().eq("plaid_item_id", item.id).lt("created_at", cutoff);
+    } catch (err) {
+        console.warn(`[plaid-sync] couldn't record sync history for ${item.id}`, err);
+    }
+}
+
+async function runSync(db: SupabaseClient, item: PlaidItemRow, { refresh = false } = {}): Promise<SyncSummary> {
     const at = new Date().toISOString();
     const summary: SyncSummary = { plaid_item_id: item.id, ok: false, inserted: 0, updated: 0, removed: 0, resurrected: 0, at };
 

@@ -22,9 +22,17 @@ import {
     Filter
 } from 'lucide-react';
 import { useProcessing } from '../../lib/ProcessingContext';
+import { useSessionState } from '../../hooks/useSessionState';
+import { usePlaidAccess } from '../../hooks/usePlaidAccess';
+import BankSyncActivity from './BankSyncActivity';
 
 export default function Processing() {
     // ── Upload state ──────────────────────────────────────────────────────────
+    const [tab, setTab] = useSessionState('uploads.tab', 'files'); // 'files' | 'bank'
+    // The Bank sync tab is only for accounts in public.plaid_access; everyone
+    // else sees the page as it was before bank sync existed.
+    const { allowed: hasPlaidAccess } = usePlaidAccess();
+    const showBankTab = hasPlaidAccess && tab === 'bank';
     const [pendingFile, setPendingFile] = useState(null);
     const [fileError, setFileError] = useState('');
     const [isDragging, setIsDragging] = useState(false);
@@ -148,6 +156,7 @@ export default function Processing() {
                 .select('file_id, file_name, transaction_account, created_at, status, raw_data')
                 .eq('user_id', user.id)
                 .neq('status', 'deleted') // rows removed by a rule: kept only for duplicate detection
+                .neq('source', 'plaid') // bank-synced rows live on the Bank sync tab
                 .order('created_at', { ascending: false });
             if (error) throw error;
 
@@ -456,8 +465,29 @@ export default function Processing() {
             {/* ── Page Header ──────────────────────────────────────────── */}
             <div className="mb-8">
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Transaction Uploads</h1>
-                <p className="text-slate-500 mt-1">Upload CSV files and run AI categorization.</p>
+                <p className="text-slate-500 mt-1">
+                    {hasPlaidAccess ? 'Upload CSV files, follow your bank sync, and run AI categorization.' : 'Upload CSV files and run AI categorization.'}
+                </p>
             </div>
+
+            {/* ── Tabs ─────────────────────────────────────────────────── */}
+            {hasPlaidAccess && <div className="mb-8 flex gap-6 border-b border-divider" role="tablist">
+                {[['files', 'CSV files'], ['bank', 'Bank sync']].map(([id, label]) => (
+                    <button
+                        key={id}
+                        role="tab"
+                        aria-selected={tab === id}
+                        onClick={() => setTab(id)}
+                        className={`-mb-px pb-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === id
+                            ? 'border-accent text-slate-900'
+                            : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>}
+
+            {showBankTab ? <BankSyncActivity /> : (<>
 
             {/* ── Token Limit Blocked Banner ────────────────────────────── */}
             {isTokenLimitBlocked && (() => {
@@ -881,6 +911,8 @@ export default function Processing() {
                     </div>
                 )}
             </div>
+
+                    </>)}
 
         </div>
         </>
