@@ -56,6 +56,19 @@ pg_cron (every 4h) / Sync now ───────▶ plaid-sync ────�
   when `PLAID_REFRESH_ENABLED=true` (free on Trial; turn off if you ever upgrade).
   `/accounts/balance/get` and Auth are never used.
 
+## Who can use it
+
+Only emails listed in `public.plaid_access` (migration
+`20261126120000_plaid_access.sql`) can connect a bank or press Sync now: each
+connection permanently uses one of the Trial plan's 10 slots. Everyone else
+doesn't see the Connected banks card, and `plaid-link` / `plaid-sync` answer
+`403 NO_PLAID_ACCESS` if called directly.
+
+To change it, add or delete a row in the Supabase Table Editor
+(`plaid_access`, lowercase email). No deploy needed. Removing someone doesn't
+stop a connection they already made (the schedule keeps syncing it, and the slot
+stays used); they can still Disconnect it.
+
 ## Setup: Sandbox
 
 1. **Plaid:** create a Dashboard account (team created on/after 2026-04-15 for the
