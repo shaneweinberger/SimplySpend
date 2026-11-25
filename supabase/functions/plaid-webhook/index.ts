@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const syncAndProcess = async () => {
         const [fresh] = await loadItems(db, { itemId: item.id });
         if (!fresh) return;
-        const summary = await syncItem(db, fresh);
+        const summary = await syncItem(db, fresh, { trigger: "webhook" });
         if (summary.inserted + summary.resurrected > 0) await runProcessing();
     };
 
