@@ -3,8 +3,11 @@ import { User, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { theme } from '../../theme';
 import ConnectedBanks from './ConnectedBanks';
+import { usePlaidAccess } from '../../hooks/usePlaidAccess';
 
 export default function Settings() {
+    // Bank sync is limited to the accounts in public.plaid_access.
+    const plaidAccess = usePlaidAccess();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const [user, setUser] = useState(null);
@@ -197,7 +200,7 @@ export default function Settings() {
                         </div>
                     </div>
 
-                    <ConnectedBanks />
+                    {plaidAccess.allowed && <ConnectedBanks />}
                 </div>
             </div>
         </div>
