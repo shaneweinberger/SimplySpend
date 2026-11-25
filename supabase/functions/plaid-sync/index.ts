@@ -42,7 +42,10 @@ Deno.serve(async (req) => {
 
         const summaries = [];
         for (const item of items) {
-            summaries.push(await syncItem(db, item, { refresh: fromSchedule || body.refresh === true }));
+            summaries.push(await syncItem(db, item, {
+                refresh: fromSchedule || body.refresh === true,
+                trigger: fromSchedule ? "schedule" : "manual",
+            }));
         }
 
         const newRows = summaries.reduce((n, s) => n + s.inserted + s.resurrected, 0);
