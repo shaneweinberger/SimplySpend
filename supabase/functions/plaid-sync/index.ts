@@ -11,6 +11,7 @@
 // verify_jwt is off for this function (the schedule doesn't send a JWT); it
 // checks the cron secret or the user's session itself.
 
+import { hasPlaidAccess, NO_ACCESS } from "../_shared/access.ts";
 import { adminClient, corsHeaders, json, requestUser, runInBackground, safeEqual } from "../_shared/http.ts";
 import { hasCredentials } from "../_shared/plaid.ts";
 import { loadItems, syncItem } from "../_shared/plaidSync.ts";
@@ -33,6 +34,9 @@ Deno.serve(async (req) => {
     if (!fromSchedule) {
         const user = await requestUser(req, db);
         if (!user) return json({ error: "Sign in first." }, 401);
+        // Sync now is limited to accounts in public.plaid_access. The schedule
+        // (above) keeps syncing every existing connection regardless.
+        if (!(await hasPlaidAccess(db, user))) return json(NO_ACCESS, 403);
         userId = user.id;
     }
 

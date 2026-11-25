@@ -9,9 +9,12 @@
 //   Saves the access token FIRST (a lost token is a lost slot), then the accounts.
 // POST { action: "reconnected", plaid_item_id }
 //   After update mode succeeds: marks the connection OK and syncs it.
+// Every action except "remove" requires the user's email in public.plaid_access.
+//
 // POST { action: "remove", plaid_item_id }
 //   Ends Plaid's subscription for it. On the Trial plan this does NOT free a slot.
 
+import { hasPlaidAccess, NO_ACCESS } from "../_shared/access.ts";
 import { adminClient, corsHeaders, json, requestUser, runInBackground } from "../_shared/http.ts";
 import { countryCodes, newConnectionEnv, plaid, PlaidError, webhookUrl } from "../_shared/plaid.ts";
 import { loadItems, saveAccounts, syncItem, type PlaidItemRow } from "../_shared/plaidSync.ts";
@@ -28,6 +31,12 @@ Deno.serve(async (req) => {
     // deno-lint-ignore no-explicit-any
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Expected a JSON body." }, 400); }
+
+    // Only accounts in public.plaid_access may connect a bank: each connection
+    // permanently uses one of the Trial plan's 10 slots. Disconnecting stays
+    // open to everyone, so anyone removed from the list can still end a
+    // connection they already made.
+    if (body.action !== "remove" && !(await hasPlaidAccess(db, user))) return json(NO_ACCESS, 403);
 
     const ownItem = async (id: string) => {
         const { data } = await db.from("plaid_items")
